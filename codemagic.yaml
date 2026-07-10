@@ -26,12 +26,12 @@ workflows:
       - name: Generate Xcode project with XcodeGen
         script: |
           brew install xcodegen
-          cd $CM_BUILD_DIR/PhysicsPracticalCoach
+          cd $CM_BUILD_DIR
           xcodegen generate
 
       - name: Set up code signing (automatic, via App Store Connect API key)
         script: |
-          cd $CM_BUILD_DIR/PhysicsPracticalCoach
+          cd $CM_BUILD_DIR
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
@@ -41,13 +41,13 @@ workflows:
 
       - name: Increment build number
         script: |
-          cd $CM_BUILD_DIR/PhysicsPracticalCoach
+          cd $CM_BUILD_DIR
           LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$BUNDLE_ID" || echo 0)
           agvtool new-version -all $(($LATEST_BUILD_NUMBER + 1))
 
       - name: Build .ipa for App Store distribution
         script: |
-          cd $CM_BUILD_DIR/PhysicsPracticalCoach
+          cd $CM_BUILD_DIR
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME"
