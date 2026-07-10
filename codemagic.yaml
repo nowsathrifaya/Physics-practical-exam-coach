@@ -1,0 +1,62 @@
+workflows:
+  ios-release:
+    name: Physics Practical Coach - iOS Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      groups:
+        - app_store_credentials   # create this group in Codemagic UI (see notes below)
+      vars:
+        XCODE_PROJECT: "PhysicsPracticalCoach.xcodeproj"
+        XCODE_SCHEME: "PhysicsPracticalCoach"
+        BUNDLE_ID: "com.physicscoach.app"
+      xcode: latest
+      cocoapods: default
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+
+    scripts:
+      - name: Generate Xcode project with XcodeGen
+        script: |
+          brew install xcodegen
+          cd $CM_BUILD_DIR/PhysicsPracticalCoach
+          xcodegen generate
+
+      - name: Set up code signing (automatic, via App Store Connect API key)
+        script: |
+          cd $CM_BUILD_DIR/PhysicsPracticalCoach
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Increment build number
+        script: |
+          cd $CM_BUILD_DIR/PhysicsPracticalCoach
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$BUNDLE_ID" || echo 0)
+          agvtool new-version -all $(($LATEST_BUILD_NUMBER + 1))
+
+      - name: Build .ipa for App Store distribution
+        script: |
+          cd $CM_BUILD_DIR/PhysicsPracticalCoach
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # Flip to true once you're ready to submit builds straight to review
+        submit_to_app_store: false
