@@ -12,6 +12,7 @@ workflows:
         XCODE_PROJECT: "PhysicsPracticalCoach.xcodeproj"
         XCODE_SCHEME: "PhysicsPracticalCoach"
         BUNDLE_ID: "com.physicscoach.app"
+        APP_STORE_APPLE_ID: "6789596496"
       xcode: latest
       cocoapods: default
 
@@ -42,15 +43,12 @@ workflows:
       - name: Increment build number
         script: |
           cd $CM_BUILD_DIR
-          LATEST_APP_STORE_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$BUNDLE_ID" || echo 0)
-          LATEST_TESTFLIGHT_BUILD_NUMBER=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" || echo 0)
-          LATEST_BUILD_NUMBER=$LATEST_APP_STORE_BUILD_NUMBER
-          if [ "$LATEST_TESTFLIGHT_BUILD_NUMBER" -gt "$LATEST_BUILD_NUMBER" ]; then
-            LATEST_BUILD_NUMBER=$LATEST_TESTFLIGHT_BUILD_NUMBER
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          if [ -z "$LATEST_BUILD_NUMBER" ]; then
+            LATEST_BUILD_NUMBER=0
           fi
           NEW_BUILD_NUMBER=$(($LATEST_BUILD_NUMBER + 1))
-          echo "App Store build number: $LATEST_APP_STORE_BUILD_NUMBER"
-          echo "TestFlight build number: $LATEST_TESTFLIGHT_BUILD_NUMBER"
+          echo "Latest known build number (TestFlight/App Store): $LATEST_BUILD_NUMBER"
           echo "Setting CURRENT_PROJECT_VERSION to: $NEW_BUILD_NUMBER"
           agvtool new-version -all $NEW_BUILD_NUMBER
           echo "Confirmed CURRENT_PROJECT_VERSION is now:"
