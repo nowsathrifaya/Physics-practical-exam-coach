@@ -147,7 +147,7 @@ final class MomentsExperimentViewModel {
             correct: correct,
             score: correct ? 100 : (withinBalanceTolerance > 0 ? 60 : 30),
             feedback: feedback,
-            examTip: "A beam that won't balance even with no weights added isn't uniform \u2014 its centre of gravity isn't at the pivot. Always find a bare beam's natural balance point first, or account for its own weight as an extra moment."
+            examTip: "A beam that won't balance even with no weights added isn't uniform \u{2014} its centre of gravity isn't at the pivot. Always find a bare beam's natural balance point first, or account for its own weight as an extra moment."
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.moments.label, result: outcome)
