@@ -48,7 +48,13 @@ workflows:
           if [ "$LATEST_TESTFLIGHT_BUILD_NUMBER" -gt "$LATEST_BUILD_NUMBER" ]; then
             LATEST_BUILD_NUMBER=$LATEST_TESTFLIGHT_BUILD_NUMBER
           fi
-          agvtool new-version -all $(($LATEST_BUILD_NUMBER + 1))
+          NEW_BUILD_NUMBER=$(($LATEST_BUILD_NUMBER + 1))
+          echo "App Store build number: $LATEST_APP_STORE_BUILD_NUMBER"
+          echo "TestFlight build number: $LATEST_TESTFLIGHT_BUILD_NUMBER"
+          echo "Setting CURRENT_PROJECT_VERSION to: $NEW_BUILD_NUMBER"
+          agvtool new-version -all $NEW_BUILD_NUMBER
+          echo "Confirmed CURRENT_PROJECT_VERSION is now:"
+          agvtool what-version
 
       - name: Build .ipa for App Store distribution
         script: |
