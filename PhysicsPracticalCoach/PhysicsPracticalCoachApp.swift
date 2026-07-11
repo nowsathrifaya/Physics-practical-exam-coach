@@ -30,6 +30,7 @@ struct PhysicsPracticalCoachApp: App {
         WindowGroup {
             RootView()
                 .environment(\.userPreferences, preferencesStore)
+                .background(Color(.systemBackground).ignoresSafeArea())
         }
         .modelContainer(modelContainer)
     }
