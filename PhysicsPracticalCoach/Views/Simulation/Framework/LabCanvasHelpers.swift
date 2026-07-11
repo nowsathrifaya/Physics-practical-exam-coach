@@ -49,6 +49,35 @@ enum LabCanvasHelpers {
         context.stroke(path, with: .color(color), lineWidth: 2)
     }
 
+    /// Draws a horizontal ruler with major ticks every 5th minor division,
+    /// used for any experiment measuring a horizontal length along a wire
+    /// (potentiometer jockey position, resistance-wire length).
+    static func drawHorizontalRuler(
+        context: GraphicsContext,
+        originY: CGFloat,
+        leftX: CGFloat,
+        widthPx: CGFloat,
+        maxValue: Double,
+        minorStep: Double,
+        color: Color = Color(hex: "#8B9997")
+    ) {
+        var path = Path()
+        path.move(to: CGPoint(x: leftX, y: originY))
+        path.addLine(to: CGPoint(x: leftX + widthPx, y: originY))
+
+        var mark = 0
+        let totalMarks = Int((maxValue / minorStep).rounded())
+        while mark <= totalMarks {
+            let fraction = CGFloat(mark) / CGFloat(totalMarks)
+            let x = leftX + fraction * widthPx
+            let tickLength: CGFloat = mark % 5 == 0 ? 16 : 8
+            path.move(to: CGPoint(x: x, y: originY))
+            path.addLine(to: CGPoint(x: x, y: originY + tickLength))
+            mark += 1
+        }
+        context.stroke(path, with: .color(color), lineWidth: 2)
+    }
+
     /// Draws a protractor-style arc with degree tick marks every 10 degrees,
     /// used for any experiment measuring an angle (pendulum release angle,
     /// refraction angle of incidence, moments' beam tilt).

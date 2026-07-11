@@ -25,7 +25,7 @@ struct SimulationListView: View {
 
     /// Experiment types that have a full Lab-framework build. Anything not
     /// in this set still routes to the generic slider shell.
-    private static let labBuiltTypes: Set<SimulationType> = [.pendulum, .springExtension, .ohmsLaw, .densityDisplacement, .moments]
+    private static let labBuiltTypes: Set<SimulationType> = [.pendulum, .springExtension, .ohmsLaw, .densityDisplacement, .moments, .potentiometer]
 
     var body: some View {
         List(profile.simulations) { type in
@@ -64,6 +64,8 @@ struct SimulationListView: View {
             DensityLabView(curriculum: profile.curriculum, repository: repository)
         case .moments:
             MomentsLabView(curriculum: profile.curriculum, repository: repository)
+        case .potentiometer:
+            PotentiometerLabView(curriculum: profile.curriculum, repository: repository)
         default:
             GenericSimulationView(type: type)
         }

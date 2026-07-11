@@ -34,6 +34,9 @@ struct GraphDatasetGenerator {
         case .sinIVsSinR:
             // sin i vs sin r: gradient = n (refractive index). Typical glass n ~ 1.50.
             (start, step, trueGradient, intercept) = (0.08, 0.08, 1.50 + rng.nextDouble(-0.03, 0.03), 0.0)
+        case .potentialGradient:
+            // V vs l for a potentiometer wire: gradient = potential gradient K = I x r, typically 1-2.5 V/m.
+            (start, step, trueGradient, intercept) = (0.10, 0.10, 1.8 + rng.nextDouble(-0.3, 0.3), 0.0)
         }
 
         var points: [GraphPoint] = []

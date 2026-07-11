@@ -91,6 +91,7 @@ enum GraphCoachType: String, CaseIterable, Codable, Identifiable {
     case distanceTime = "DISTANCE_TIME"
     case tSquaredVsLength = "T_SQUARED_VS_LENGTH"
     case sinIVsSinR = "SIN_I_VS_SIN_R"
+    case potentialGradient = "POTENTIAL_GRADIENT"
 
     var id: String { rawValue }
 
@@ -139,6 +140,13 @@ enum GraphCoachType: String, CaseIterable, Codable, Identifiable {
                 xLabel: "sin r", xUnit: "",
                 yLabel: "sin i", yUnit: "",
                 gradientMeaning: "Gradient gives the refractive index n of the glass block."
+            )
+        case .potentialGradient:
+            return Definition(
+                label: "Voltage vs length (Potentiometer)",
+                xLabel: "Length l", xUnit: "m",
+                yLabel: "Voltage V", yUnit: "V",
+                gradientMeaning: "Gradient gives the potential gradient K = I \u{00D7} r (volts per metre of wire)."
             )
         }
     }

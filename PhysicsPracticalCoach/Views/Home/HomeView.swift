@@ -225,6 +225,8 @@ private struct ContinueLearningCard: View {
             DensityLabView(curriculum: homeViewModel.curriculum, repository: repository)
         case .moments:
             MomentsLabView(curriculum: homeViewModel.curriculum, repository: repository)
+        case .potentiometer:
+            PotentiometerLabView(curriculum: homeViewModel.curriculum, repository: repository)
         default:
             SimulationListView(profile: profile)
         }
