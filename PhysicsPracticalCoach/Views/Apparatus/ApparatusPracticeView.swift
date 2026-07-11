@@ -244,8 +244,9 @@ struct GenericDialCanvasView: View {
             case let .measuringCylinder(maxVolumeCm3, liquidLevelCm3, _):
                 drawVerticalBar(context: &context, size: size, value: liquidLevelCm3, minValue: 0, maxValue: Double(maxVolumeCm3), color: .blue)
             case let .burette(readingCm3):
-                // Burette scale is 0 at top, 50 at bottom — invert the fill.
-                drawVerticalBar(context: &context, size: size, value: 50 - readingCm3, minValue: 0, maxValue: 50, color: .cyan)
+                // Burette scale is 0 at top, 50 at bottom — invert the fill
+                // and the printed scale labels to match the real instrument.
+                drawVerticalBar(context: &context, size: size, value: 50 - readingCm3, minValue: 0, maxValue: 50, color: .cyan, invertLabels: true)
             case let .stopwatch(minutes, seconds, tenths):
                 let text = String(format: "%d:%02d.%d", minutes, seconds, tenths)
                 context.draw(Text(text).font(.system(size: 40, weight: .semibold, design: .monospaced)), at: center)
@@ -261,6 +262,44 @@ struct GenericDialCanvasView: View {
         arc.addArc(center: center, radius: radius, startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
         context.stroke(arc, with: .color(.primary.opacity(0.3)), lineWidth: 4)
 
+        // Scale graduations: major ticks with numbers every 1/5 of range,
+        // minor unlabeled ticks halfway between each major tick.
+        let majorDivisions = 5
+        for i in 0...majorDivisions {
+            let fraction = Double(i) / Double(majorDivisions)
+            let angle = Angle.degrees(180 - 180 * fraction)
+            let cosA = cos(angle.radians)
+            let sinA = sin(angle.radians)
+
+            let tickOuter = CGPoint(x: center.x + radius * cosA, y: center.y - radius * sinA)
+            let tickInner = CGPoint(x: center.x + radius * 0.85 * cosA, y: center.y - radius * 0.85 * sinA)
+            var majorTick = Path()
+            majorTick.move(to: tickOuter)
+            majorTick.addLine(to: tickInner)
+            context.stroke(majorTick, with: .color(.primary), lineWidth: 2)
+
+            let labelPoint = CGPoint(x: center.x + radius * 1.16 * cosA, y: center.y - radius * 1.16 * sinA)
+            let labelValue = maxValue * fraction
+            context.draw(
+                Text(String(format: labelValue.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.1f", labelValue))
+                    .font(.system(size: 10)),
+                at: labelPoint
+            )
+
+            if i < majorDivisions {
+                let minorFraction = fraction + (0.5 / Double(majorDivisions))
+                let minorAngle = Angle.degrees(180 - 180 * minorFraction)
+                let minorCosA = cos(minorAngle.radians)
+                let minorSinA = sin(minorAngle.radians)
+                let minorOuter = CGPoint(x: center.x + radius * minorCosA, y: center.y - radius * minorSinA)
+                let minorInner = CGPoint(x: center.x + radius * 0.92 * minorCosA, y: center.y - radius * 0.92 * minorSinA)
+                var minorTick = Path()
+                minorTick.move(to: minorOuter)
+                minorTick.addLine(to: minorInner)
+                context.stroke(minorTick, with: .color(.primary.opacity(0.5)), lineWidth: 1)
+            }
+        }
+
         let fraction = max(0, min(1, value / maxValue))
         let angle = Angle.degrees(180 - 180 * fraction)
         let needleEnd = CGPoint(
@@ -272,14 +311,9 @@ struct GenericDialCanvasView: View {
         needle.addLine(to: needleEnd)
         context.stroke(needle, with: .color(.red), lineWidth: 3)
         context.fill(Path(ellipseIn: CGRect(x: center.x - 4, y: center.y - 4, width: 8, height: 8)), with: .color(.primary))
-
-        context.draw(
-            Text(String(format: "0 \u{2013} %.1f", maxValue)).font(.caption2),
-            at: CGPoint(x: center.x, y: center.y + 24)
-        )
     }
 
-    private func drawVerticalBar(context: inout GraphicsContext, size: CGSize, value: Double, minValue: Double, maxValue: Double, color: Color) {
+    private func drawVerticalBar(context: inout GraphicsContext, size: CGSize, value: Double, minValue: Double, maxValue: Double, color: Color, invertLabels: Bool = false) {
         let barWidth: CGFloat = 40
         let barRect = CGRect(x: size.width / 2 - barWidth / 2, y: 16, width: barWidth, height: size.height - 32)
         context.stroke(RoundedRectangle(cornerRadius: 6).path(in: barRect), with: .color(.primary.opacity(0.3)), lineWidth: 2)
@@ -288,5 +322,28 @@ struct GenericDialCanvasView: View {
         let fillHeight = barRect.height * fraction
         let fillRect = CGRect(x: barRect.minX, y: barRect.maxY - fillHeight, width: barRect.width, height: fillHeight)
         context.fill(RoundedRectangle(cornerRadius: 6).path(in: fillRect), with: .color(color.opacity(0.6)))
+
+        // Scale graduations: major ticks with numbers at every 1/5 of the
+        // range. By default runs bottom (minValue) to top (maxValue);
+        // `invertLabels` flips this for instruments like the burette, whose
+        // printed scale reads 0 at the top down to maxValue at the bottom.
+        let majorDivisions = 5
+        let tickX = barRect.maxX + 6
+        for i in 0...majorDivisions {
+            let fractionUp = Double(i) / Double(majorDivisions)
+            let y = barRect.maxY - barRect.height * fractionUp
+            var tick = Path()
+            tick.move(to: CGPoint(x: barRect.maxX, y: y))
+            tick.addLine(to: CGPoint(x: tickX, y: y))
+            context.stroke(tick, with: .color(.primary), lineWidth: 1.5)
+
+            let labelFraction = invertLabels ? (1 - fractionUp) : fractionUp
+            let labelValue = minValue + (maxValue - minValue) * labelFraction
+            context.draw(
+                Text(String(format: labelValue.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.1f", labelValue))
+                    .font(.system(size: 10)),
+                at: CGPoint(x: tickX + 14, y: y)
+            )
+        }
     }
 }
