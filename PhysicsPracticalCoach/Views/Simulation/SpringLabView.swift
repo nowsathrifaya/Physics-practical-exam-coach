@@ -296,7 +296,7 @@ private struct DraggableMassChip: View {
             }
             .offset(dragOffset)
             .opacity(isUsed ? 0.4 : 1)
-            .gesture(
+            .highPriorityGesture(
                 DragGesture()
                     .onChanged { value in
                         guard !isUsed else { return }

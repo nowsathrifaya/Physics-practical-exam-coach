@@ -258,6 +258,25 @@ private struct DialGaugeView: View {
 
             LabCanvasHelpers.drawProtractorArc(context: context, center: center, radius: radius, startDeg: 180, endDeg: 360)
 
+            // Numbered scale: 5 major divisions across the 180deg arc,
+            // 0 at the left (180deg) to maxValue at the right (360deg).
+            let majorDivisions = 5
+            for i in 0...majorDivisions {
+                let divisionFraction = Double(i) / Double(majorDivisions)
+                let degrees = 180 + 180 * divisionFraction
+                let rad = degrees * .pi / 180
+                let labelPoint = CGPoint(
+                    x: center.x + (radius + 12) * cos(rad),
+                    y: center.y + (radius + 12) * sin(rad)
+                )
+                let labelValue = maxValue * divisionFraction
+                LabCanvasHelpers.drawLabel(
+                    context: context,
+                    text: String(format: labelValue.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.1f", labelValue),
+                    at: labelPoint, size: 9
+                )
+            }
+
             let fraction = max(0, min(1, value / maxValue))
             let angleDeg = 180 + 180 * fraction
             let angleRad = angleDeg * .pi / 180

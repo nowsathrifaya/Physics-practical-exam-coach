@@ -51,7 +51,12 @@ final class PendulumLabState {
     private(set) var phase: Phase = .settingLength
 
     private(set) var lengthM: Double = 1.0 {
-        didSet { lengthM = min(max(lengthM, 0.3), 1.5) }
+        didSet {
+            let clamped = min(max(lengthM, 0.3), 1.5)
+            if clamped != lengthM {
+                lengthM = clamped
+            }
+        }
     }
 
     /// Angle captured at the instant of release (degrees). 0 while not yet released.
@@ -330,7 +335,7 @@ struct PendulumLabView: View {
                     }
                 }
                 .contentShape(Rectangle())
-                .gesture(
+                .highPriorityGesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { value in
                             switch lab.phase {
