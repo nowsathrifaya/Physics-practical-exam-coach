@@ -54,6 +54,13 @@ final class OhmsLawExperimentViewModel {
     private(set) var apparatus: OhmsLawLabState
     private let recorder: LabAttemptRecorder
 
+    /// Forwards to `apparatus.rheostatFraction` so the UI can form a
+    /// two-way binding without needing write access to `apparatus` itself.
+    var rheostatFraction: Double {
+        get { apparatus.rheostatFraction }
+        set { apparatus.rheostatFraction = newValue }
+    }
+
     private(set) var readings: [LabReading] = []
     private(set) var result: LabRunResult?
     var ammeterInput: String = ""
@@ -184,7 +191,7 @@ struct OhmsLawLabView: View {
                 }
                 .frame(height: 140)
 
-                RheostatSliderView(fraction: $viewModel.apparatus.rheostatFraction)
+                RheostatSliderView(fraction: $viewModel.rheostatFraction)
                     .frame(height: 60)
             }
             .padding(16)
