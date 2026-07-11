@@ -34,6 +34,7 @@ targets:
         SWIFT_STRICT_CONCURRENCY: complete
         DEVELOPMENT_TEAM: "8J7HLR3KXW"
         CODE_SIGN_STYLE: "Manual"
+        GENERATE_INFOPLIST_FILE: NO
     scheme:
       testTargets: []
       gatherCoverageData: true
