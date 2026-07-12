@@ -27,32 +27,44 @@ struct PendulumVirtualLabExperiment: VirtualLabExperiment {
         LabApparatusItem(
             id: "retort_stand", name: "Retort stand", systemImage: "figure.stand",
             placementHint: "Start with the retort stand \u{2014} everything else attaches to it.",
-            setUpInstruction: "Place the retort stand on a flat, stable surface."
+            setUpInstruction: "Place the retort stand on a flat, stable surface.",
+            precision: "N/A", uncertainty: "N/A",
+            usageDescription: "Provides a rigid, fixed support so the pendulum's pivot doesn't move during the experiment."
         ),
         LabApparatusItem(
             id: "clamp", name: "Boss and clamp", systemImage: "wrench.and.screwdriver.fill",
             placementHint: "The clamp attaches to the retort stand before anything can hang from it.",
-            setUpInstruction: "Attach the boss and clamp near the top of the stand."
+            setUpInstruction: "Attach the boss and clamp near the top of the stand.",
+            precision: "N/A", uncertainty: "N/A",
+            usageDescription: "Holds the string at a fixed pivot point, level with the top of the metre rule's zero mark."
         ),
         LabApparatusItem(
             id: "string", name: "String", systemImage: "line.diagonal",
             placementHint: "The string needs the clamp in place first, so it has something to hang from.",
-            setUpInstruction: "Tie the string securely to the clamp."
+            setUpInstruction: "Tie the string securely to the clamp.",
+            precision: "N/A", uncertainty: "N/A",
+            usageDescription: "Use a light, inextensible string \u{2014} its own mass and stretch would otherwise introduce error into L."
         ),
         LabApparatusItem(
             id: "bob", name: "Pendulum bob", systemImage: "circle.fill",
             placementHint: "The bob attaches to the free end of the string, after the string is already up.",
-            setUpInstruction: "Tie the bob to the free end of the string so it hangs freely."
+            setUpInstruction: "Tie the bob to the free end of the string so it hangs freely.",
+            precision: "N/A", uncertainty: "N/A",
+            usageDescription: "A dense, small bob approximates a point mass, which is what the T = 2\u{03C0}\u{221A}(L/g) formula assumes."
         ),
         LabApparatusItem(
             id: "metre_rule", name: "Metre rule", systemImage: "ruler",
             placementHint: "Bring the metre rule in once the pendulum is hanging, so you can measure its length.",
-            setUpInstruction: "Position the metre rule vertically alongside the string, from the pivot down."
+            setUpInstruction: "Position the metre rule vertically alongside the string, from the pivot down.",
+            precision: "1 mm", uncertainty: "\u{00B1}0.5 mm",
+            usageDescription: "Measures the pendulum's length L, from the pivot to the centre of the bob \u{2014} not to the bottom of the bob."
         ),
         LabApparatusItem(
             id: "stopwatch", name: "Stopwatch", systemImage: "stopwatch",
             placementHint: "The stopwatch is the last thing you need, once everything else is ready to swing.",
-            setUpInstruction: "Have the stopwatch ready to start the instant you release the bob."
+            setUpInstruction: "Have the stopwatch ready to start the instant you release the bob.",
+            precision: "0.01 s", uncertainty: "\u{00B1}0.2\u20130.3 s (human reaction time, not the instrument itself)",
+            usageDescription: "Times a fixed number of oscillations (commonly 10) so the period per swing can be found by dividing."
         ),
     ]
 
