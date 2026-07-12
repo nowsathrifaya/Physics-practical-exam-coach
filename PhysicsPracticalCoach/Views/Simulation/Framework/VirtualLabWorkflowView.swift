@@ -259,7 +259,7 @@ private struct IntroductionStageView: View {
 /// `placementHint` (teaching, not just rejecting) instead of guessing at
 /// order.
 private struct CollectApparatusStageView: View {
-    @Bindable var viewModel: VirtualLabWorkflowViewModel
+    let viewModel: VirtualLabWorkflowViewModel
     @State private var zoneFrames: [String: CGRect] = [:]
     @State private var isChecking = false
     @State private var checkPassed = false
@@ -500,7 +500,7 @@ private struct ApparatusInfoView: View {
 // MARK: - Stage 3: Set Up
 
 private struct SetUpStageView: View {
-    @Bindable var viewModel: VirtualLabWorkflowViewModel
+    let viewModel: VirtualLabWorkflowViewModel
     @State private var confirmedSteps: Set<String> = []
     @State private var isChecking = false
     @State private var checkPassed = false
@@ -565,7 +565,7 @@ private struct SetUpStageView: View {
 // MARK: - Stage 8: Practical Questions
 
 private struct PracticalQuestionsStageView: View {
-    @Bindable var viewModel: VirtualLabWorkflowViewModel
+    let viewModel: VirtualLabWorkflowViewModel
     @State private var answers: [String: String] = [:]
 
     var body: some View {
@@ -583,9 +583,12 @@ private struct PracticalQuestionsStageView: View {
             ForEach(viewModel.experiment.practicalQuestions) { question in
                 VStack(alignment: .leading, spacing: 8) {
                     Text(question.prompt).font(.subheadline.weight(.medium))
-                    TextField("Your answer", text: Binding(
+                    TextField("Your answer", text: Binding<String>(
                         get: { answers[question.id] ?? "" },
-                        set: { answers[question.id] = $0; viewModel.recordAnswer(for: question, text: $0) }
+                        set: { newValue in
+                            answers[question.id] = newValue
+                            viewModel.recordAnswer(for: question, text: newValue)
+                        }
                     ), axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     Text("\(question.marks) mark\(question.marks == 1 ? "" : "s")")
@@ -606,7 +609,7 @@ private struct PracticalQuestionsStageView: View {
 // MARK: - Stage 9: Conclusion
 
 private struct ConclusionStageView: View {
-    @Bindable var viewModel: VirtualLabWorkflowViewModel
+    let viewModel: VirtualLabWorkflowViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
