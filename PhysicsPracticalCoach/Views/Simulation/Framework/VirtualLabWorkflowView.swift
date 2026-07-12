@@ -354,7 +354,7 @@ private struct CollectApparatusStageView: View {
         return HStack {
             Text(item.name)
                 .font(.caption.weight(.medium))
-                .foregroundStyle(isPlaced ? .white : .white.opacity(0.6))
+                .foregroundStyle(isPlaced ? Color.white : Color.white.opacity(0.6))
             Spacer()
             if isPlaced {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
