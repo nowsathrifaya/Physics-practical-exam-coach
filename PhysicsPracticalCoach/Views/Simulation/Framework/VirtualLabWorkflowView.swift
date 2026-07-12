@@ -699,20 +699,41 @@ private struct ExaminerFeedbackStageView: View {
             Text("Examiner Feedback").font(.title2.bold())
 
             ForEach(viewModel.examinerNotes) { note in
-                Label(note.text, systemImage: note.isPositive ? "checkmark.circle.fill" : "arrow.up.circle.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(note.isPositive ? .green : .orange)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        (note.isPositive ? Color.green : Color.orange).opacity(0.1),
-                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    )
+                ExaminerNoteRow(note: note)
             }
 
             Button("New attempt") { viewModel.restart() }
                 .buttonStyle(.bordered)
                 .frame(maxWidth: .infinity)
         }
+    }
+}
+
+private struct ExaminerNoteRow: View {
+    let note: ExaminerFeedbackNote
+
+    private var iconName: String {
+        if note.isPositive {
+            return "checkmark.circle.fill"
+        } else {
+            return "arrow.up.circle.fill"
+        }
+    }
+
+    private var tintColor: Color {
+        if note.isPositive {
+            return Color.green
+        } else {
+            return Color.orange
+        }
+    }
+
+    var body: some View {
+        Label(note.text, systemImage: iconName)
+            .font(.subheadline)
+            .foregroundStyle(tintColor)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(tintColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
