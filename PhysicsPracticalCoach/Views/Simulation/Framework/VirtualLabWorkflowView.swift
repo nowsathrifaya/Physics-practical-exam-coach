@@ -511,24 +511,15 @@ private struct SetUpStageView: View {
                 .foregroundStyle(.secondary)
 
             ForEach(viewModel.experiment.apparatusItems) { item in
-                Button {
-                    withAnimation(.spring(response: 0.3)) {
-                        confirmedSteps.insert(item.id)
-                    }
-                } label: {
-                    HStack {
-                        Image(systemName: confirmedSteps.contains(item.id) ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(confirmedSteps.contains(item.id) ? .green : .secondary)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.name).font(.subheadline.weight(.medium))
-                            Text(item.setUpInstruction).font(.caption).foregroundStyle(.secondary)
+                SetUpStepRow(
+                    item: item,
+                    isConfirmed: confirmedSteps.contains(item.id),
+                    onTap: {
+                        withAnimation(.spring(response: 0.3)) {
+                            confirmedSteps.insert(item.id)
                         }
-                        Spacer()
                     }
-                    .padding(12)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(.plain)
+                )
             }
 
             if isChecking {
@@ -560,6 +551,44 @@ private struct SetUpStageView: View {
     }
 }
 
+private struct SetUpStepRow: View {
+    let item: LabApparatusItem
+    let isConfirmed: Bool
+    let onTap: () -> Void
+
+    private var iconName: String {
+        if isConfirmed {
+            return "checkmark.circle.fill"
+        } else {
+            return "circle"
+        }
+    }
+
+    private var iconColor: Color {
+        if isConfirmed {
+            return Color.green
+        } else {
+            return Color.secondary
+        }
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack {
+                Image(systemName: iconName).foregroundStyle(iconColor)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.name).font(.subheadline.weight(.medium))
+                    Text(item.setUpInstruction).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(12)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Stage 8: Practical Questions
 
 private struct PracticalQuestionsStageView: View {
@@ -579,28 +608,50 @@ private struct PracticalQuestionsStageView: View {
                 .foregroundStyle(.secondary)
 
             ForEach(viewModel.experiment.practicalQuestions) { question in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(question.prompt).font(.subheadline.weight(.medium))
-                    TextField("Your answer", text: Binding<String>(
-                        get: { answers[question.id] ?? "" },
-                        set: { newValue in
-                            answers[question.id] = newValue
-                            viewModel.recordAnswer(for: question, text: newValue)
-                        }
-                    ), axis: .vertical)
-                    .textFieldStyle(.roundedBorder)
-                    Text("\(question.marks) mark\(question.marks == 1 ? "" : "s")")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(12)
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                PracticalQuestionRow(
+                    question: question,
+                    answer: answers[question.id] ?? "",
+                    onAnswerChanged: { newValue in
+                        answers[question.id] = newValue
+                        viewModel.recordAnswer(for: question, text: newValue)
+                    }
+                )
             }
 
             Button("Continue to Conclusion") { viewModel.proceedToConclusion() }
                 .buttonStyle(.borderedProminent)
                 .frame(maxWidth: .infinity)
         }
+    }
+}
+
+private struct PracticalQuestionRow: View {
+    let question: ExperimentQuestion
+    let answer: String
+    let onAnswerChanged: (String) -> Void
+
+    private var marksLabel: String {
+        if question.marks == 1 {
+            return "1 mark"
+        } else {
+            return "\(question.marks) marks"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(question.prompt).font(.subheadline.weight(.medium))
+            TextField("Your answer", text: Binding<String>(
+                get: { answer },
+                set: { onAnswerChanged($0) }
+            ), axis: .vertical)
+            .textFieldStyle(.roundedBorder)
+            Text(marksLabel)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
@@ -622,19 +673,11 @@ private struct ConclusionStageView: View {
                 .foregroundStyle(.secondary)
 
             ForEach(Array(viewModel.experiment.conclusionOptions.enumerated()), id: \.offset) { index, option in
-                Button {
-                    viewModel.selectConclusion(index)
-                } label: {
-                    HStack {
-                        Image(systemName: viewModel.conclusionSelection == index ? "largecircle.fill.circle" : "circle")
-                            .foregroundStyle(viewModel.conclusionSelection == index ? Color.accentColor : Color.secondary)
-                        Text(option).font(.subheadline)
-                        Spacer()
-                    }
-                    .padding(12)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(.plain)
+                ConclusionOptionRow(
+                    option: option,
+                    isSelected: viewModel.conclusionSelection == index,
+                    onTap: { viewModel.selectConclusion(index) }
+                )
             }
 
             Button("Finish Experiment") { viewModel.finishExperiment() }
@@ -646,6 +689,41 @@ private struct ConclusionStageView: View {
 }
 
 // MARK: - Stage 10: Results
+
+private struct ConclusionOptionRow: View {
+    let option: String
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    private var iconName: String {
+        if isSelected {
+            return "largecircle.fill.circle"
+        } else {
+            return "circle"
+        }
+    }
+
+    private var iconColor: Color {
+        if isSelected {
+            return Color.accentColor
+        } else {
+            return Color.secondary
+        }
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack {
+                Image(systemName: iconName).foregroundStyle(iconColor)
+                Text(option).font(.subheadline)
+                Spacer()
+            }
+            .padding(12)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
 
 private struct ResultsStageView: View {
     let viewModel: VirtualLabWorkflowViewModel
@@ -659,15 +737,10 @@ private struct ResultsStageView: View {
 
             VStack(spacing: 0) {
                 ForEach(viewModel.sectionScores) { section in
-                    HStack {
-                        Text(section.section).font(.subheadline)
-                        Spacer()
-                        Text("\(section.score)/\(section.maxScore)").font(.subheadline.weight(.semibold))
-                    }
-                    .padding(.vertical, 10)
-                    if section.id != viewModel.sectionScores.last?.id {
-                        Divider()
-                    }
+                    SectionScoreRow(
+                        section: section,
+                        isLast: section.id == viewModel.sectionScores.last?.id
+                    )
                 }
                 Divider()
                 HStack {
@@ -683,6 +756,25 @@ private struct ResultsStageView: View {
             Button("View examiner feedback") { viewModel.viewExaminerFeedback() }
                 .buttonStyle(.borderedProminent)
                 .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+private struct SectionScoreRow: View {
+    let section: ExperimentSectionScore
+    let isLast: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(section.section).font(.subheadline)
+                Spacer()
+                Text("\(section.score)/\(section.maxScore)").font(.subheadline.weight(.semibold))
+            }
+            .padding(.vertical, 10)
+            if !isLast {
+                Divider()
+            }
         }
     }
 }
