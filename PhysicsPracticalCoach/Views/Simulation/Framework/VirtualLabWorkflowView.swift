@@ -191,7 +191,7 @@ private struct ApparatusCard: View {
         VStack(spacing: 8) {
             Image(systemName: item.systemImage)
                 .font(.title2)
-                .foregroundStyle(isPlaced ? .green : .accentColor)
+                .foregroundStyle(isPlaced ? Color.green : Color.accentColor)
             Text(item.name)
                 .font(.caption.weight(.medium))
                 .multilineTextAlignment(.center)
@@ -322,7 +322,7 @@ private struct ConclusionStageView: View {
                 } label: {
                     HStack {
                         Image(systemName: viewModel.conclusionSelection == index ? "largecircle.fill.circle" : "circle")
-                            .foregroundStyle(viewModel.conclusionSelection == index ? .accentColor : .secondary)
+                            .foregroundStyle(viewModel.conclusionSelection == index ? Color.accentColor : Color.secondary)
                         Text(option).font(.subheadline)
                         Spacer()
                     }
