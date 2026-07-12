@@ -322,8 +322,7 @@ private struct CollectApparatusStageView: View {
         .onChange(of: viewModel.allApparatusPlaced) { _, allPlaced in
             guard allPlaced else { return }
             isChecking = true
-            Task {
-                try? await Task.sleep(for: .seconds(0.9))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
                 isChecking = false
                 checkPassed = true
             }
@@ -553,8 +552,7 @@ private struct SetUpStageView: View {
         .onChange(of: confirmedSteps.count) { _, count in
             guard count == viewModel.experiment.apparatusItems.count else { return }
             isChecking = true
-            Task {
-                try? await Task.sleep(for: .seconds(0.9))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
                 isChecking = false
                 checkPassed = true
             }
