@@ -23,8 +23,6 @@ targets:
       - path: PhysicsPracticalCoach
         excludes:
           - Resources/Info.plist
-    info:
-      path: PhysicsPracticalCoach/Resources/Info.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.physicscoach.app
