@@ -63,7 +63,7 @@ struct PendulumVirtualLabExperiment: VirtualLabExperiment {
             id: "stopwatch", name: "Stopwatch", systemImage: "stopwatch",
             placementHint: "The stopwatch is the last thing you need, once everything else is ready to swing.",
             setUpInstruction: "Have the stopwatch ready to start the instant you release the bob.",
-            precision: "0.01 s", uncertainty: "\u{00B1}0.2\u20130.3 s (human reaction time, not the instrument itself)",
+            precision: "0.01 s", uncertainty: "\u{00B1}0.2\u{2013}0.3 s (human reaction time, not the instrument itself)",
             usageDescription: "Times a fixed number of oscillations (commonly 10) so the period per swing can be found by dividing."
         ),
     ]
