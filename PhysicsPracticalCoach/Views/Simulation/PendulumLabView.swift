@@ -155,6 +155,12 @@ final class PendulumExperimentViewModel {
     private(set) var readings: [LabReading] = []
     private(set) var result: LabRunResult?
 
+    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
+    /// once after `calculateResult()` sets `result`. Nil by default, so
+    /// existing standalone `PendulumLabView` usage (Simulations tab)
+    /// behaves exactly as before; only the new wrapping workflow sets this.
+    var onFinished: ((LabRunResult) -> Void)?
+
     init(recorder: LabAttemptRecorder) {
         self.recorder = recorder
         var rng = SeededRandomNumberGenerator(seed: Int.random(in: 0...Int(Int32.max)))
@@ -242,6 +248,7 @@ final class PendulumExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.pendulum.label, result: outcome)
+        onFinished?(outcome)
     }
 
     func newTask() {
@@ -261,11 +268,13 @@ struct PendulumLabView: View {
     let curriculum: Curriculum
     @State private var viewModel: PendulumExperimentViewModel
 
-    init(curriculum: Curriculum, repository: AttemptRepository) {
+    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
         self.curriculum = curriculum
-        _viewModel = State(initialValue: PendulumExperimentViewModel(
+        let model = PendulumExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum)
-        ))
+        )
+        model.onFinished = onFinished
+        _viewModel = State(initialValue: model)
     }
 
     var body: some View {

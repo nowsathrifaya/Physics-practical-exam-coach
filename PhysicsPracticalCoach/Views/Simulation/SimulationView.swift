@@ -47,7 +47,7 @@ struct SimulationListView: View {
                 .padding(.vertical, 4)
             }
         }
-        .navigationTitle("Simulations")
+        .navigationTitle("\u{1F9EA} Virtual Lab Experiments")
     }
 
     @ViewBuilder
@@ -55,7 +55,7 @@ struct SimulationListView: View {
         let repository = AttemptRepository(modelContext: modelContext)
         switch type {
         case .pendulum:
-            PendulumLabView(curriculum: profile.curriculum, repository: repository)
+            PendulumVirtualLabView(curriculum: profile.curriculum, repository: repository)
         case .springExtension:
             SpringLabView(curriculum: profile.curriculum, repository: repository)
         case .ohmsLaw:

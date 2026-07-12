@@ -54,7 +54,7 @@ struct HomeView: View {
                     NavigationLink {
                         SimulationListView(profile: profile)
                     } label: {
-                        QuickActionCard(title: "Simulations", subtitle: "\(profile.simulations.count) experiments", systemImage: "flask.fill", tint: .teal)
+                        QuickActionCard(title: "Virtual Lab\nExperiments", subtitle: "\(profile.simulations.count) experiments", systemImage: "flask.fill", tint: .teal)
                     }
                     NavigationLink {
                         AceListView(curriculum: homeViewModel.curriculum)
@@ -216,7 +216,7 @@ private struct ContinueLearningCard: View {
         let repository = AttemptRepository(modelContext: modelContext)
         switch type {
         case .pendulum:
-            PendulumLabView(curriculum: homeViewModel.curriculum, repository: repository)
+            PendulumVirtualLabView(curriculum: homeViewModel.curriculum, repository: repository)
         case .springExtension:
             SpringLabView(curriculum: homeViewModel.curriculum, repository: repository)
         case .ohmsLaw:
