@@ -307,7 +307,7 @@ private struct DraggableMassChip: View {
                         if value.translation.height <= Self.loadThreshold {
                             onLoaded()
                         }
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        withAnimation(Animation.spring(response: 0.3, dampingFraction: 0.7)) {
                             dragOffset = .zero
                         }
                     }
