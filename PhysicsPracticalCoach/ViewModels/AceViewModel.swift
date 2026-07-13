@@ -58,7 +58,7 @@ final class AceViewModel {
     let isMockExam: Bool
     private(set) var mockExamSecondsRemaining: Int
     private(set) var mockExamFinished = false
-    private nonisolated(unsafe) var mockExamTimer: Timer?
+    private nonisolated var mockExamTimer: Timer?
 
     init(
         repository: AttemptRepository,
