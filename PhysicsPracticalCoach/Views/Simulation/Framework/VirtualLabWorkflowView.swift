@@ -355,8 +355,8 @@ private struct CollectApparatusStageView: View {
                     .frame(maxWidth: .infinity)
             }
         }
-        .animation(.spring(response: 0.35), value: viewModel.allApparatusPlaced)
-        .animation(.spring(response: 0.35), value: isChecking)
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: viewModel.allApparatusPlaced)
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isChecking)
         .onChange(of: viewModel.allApparatusPlaced) { _, allPlaced in
             guard allPlaced else { return }
             isChecking = true
@@ -718,7 +718,7 @@ private struct SetUpStageView: View {
                     item: item,
                     isConfirmed: confirmedSteps.contains(item.id),
                     onTap: {
-                        withAnimation(.spring(response: 0.3)) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             confirmedSteps.insert(item.id)
                         }
                     }
@@ -741,8 +741,8 @@ private struct SetUpStageView: View {
                     .frame(maxWidth: .infinity)
             }
         }
-        .animation(.spring(response: 0.35), value: confirmedSteps)
-        .animation(.spring(response: 0.35), value: isChecking)
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: confirmedSteps)
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isChecking)
         .onChange(of: confirmedSteps) { _, updatedSteps in
             guard updatedSteps.count == viewModel.experiment.apparatusItems.count else { return }
             isChecking = true
