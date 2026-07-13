@@ -12,7 +12,7 @@
 import Foundation
 import Combine
 
-protocol UserPreferences {
+protocol UserPreferences: Sendable {
     var selectedCurriculumPublisher: AnyPublisher<Curriculum?, Never> { get }
     var hasCompletedOnboardingPublisher: AnyPublisher<Bool, Never> { get }
     var selectedCurriculum: Curriculum? { get }
@@ -20,7 +20,7 @@ protocol UserPreferences {
     func saveCurriculum(_ curriculum: Curriculum)
 }
 
-final class UserPreferencesStore: UserPreferences, ObservableObject {
+final class UserPreferencesStore: UserPreferences, ObservableObject, @unchecked Sendable {
     private enum Keys {
         static let curriculum = "selected_curriculum"
         static let onboarded = "has_completed_onboarding"
