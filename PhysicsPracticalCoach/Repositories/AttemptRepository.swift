@@ -8,7 +8,7 @@
 //
 
 import Foundation
-@preconcurrency import SwiftData
+import SwiftData
 
 @MainActor
 final class AttemptRepository {
@@ -22,11 +22,16 @@ final class AttemptRepository {
     /// `AttemptDao.observeAttempts()`. SwiftData has no long-lived Flow
     /// equivalent tied to a repository, so views re-fetch via `@Query` or call
     /// this after a mutation; see `ProgressViewModel` for the pattern used.
+    ///
+    /// Sorting is done manually after the fetch (rather than via
+    /// `SortDescriptor(\.completedAt, ...)`) because building a `SortDescriptor`
+    /// from a `KeyPath` triggers a "KeyPath does not conform to Sendable"
+    /// diagnostic under the Swift 6 concurrency checker, which this project
+    /// treats as a build error.
     func fetchAttempts() -> [Attempt] {
-        let descriptor = FetchDescriptor<Attempt>(
-            sortBy: [SortDescriptor(\.completedAt, order: .reverse)]
-        )
-        return (try? modelContext.fetch(descriptor)) ?? []
+        let descriptor = FetchDescriptor<Attempt>()
+        let attempts = (try? modelContext.fetch(descriptor)) ?? []
+        return attempts.sorted { $0.completedAt > $1.completedAt }
     }
 
     func save(
