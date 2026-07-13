@@ -462,8 +462,8 @@ private struct ApparatusCard: View {
         .allowsHitTesting(!isPlaced)
         .popover(isPresented: $showingInfo) {
             ApparatusInfoView(item: item)
-                .presentationCompactAdaptation(.popover)
         }
+        .presentationCompactAdaptation(.popover)
     }
 }
 
@@ -540,8 +540,8 @@ private struct SetUpStageView: View {
         }
         .animation(.spring(response: 0.35), value: confirmedSteps.count)
         .animation(.spring(response: 0.35), value: isChecking)
-        .onChange(of: confirmedSteps.count) { _, count in
-            guard count == viewModel.experiment.apparatusItems.count else { return }
+        .onChange(of: confirmedSteps) { _, updatedSteps in
+            guard updatedSteps.count == viewModel.experiment.apparatusItems.count else { return }
             isChecking = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
                 isChecking = false
