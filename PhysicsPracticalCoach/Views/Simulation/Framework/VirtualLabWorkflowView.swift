@@ -516,7 +516,7 @@ private struct SetUpStageView: View {
                     isConfirmed: confirmedSteps.contains(item.id),
                     onTap: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7, blendDuration: 0)) {
-                            confirmedSteps.insert(item.id)
+                            _ = confirmedSteps.insert(item.id)
                         }
                     }
                 )
