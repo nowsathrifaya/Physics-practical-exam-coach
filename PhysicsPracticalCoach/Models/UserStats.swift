@@ -14,7 +14,7 @@ struct Badge: Identifiable, Hashable, Sendable {
     let unlocked: Bool
 }
 
-struct UserStats: Sendable {
+struct UserStats {
     let streakDays: Int
     let totalPoints: Int
     let accuracyPercent: Int
@@ -26,7 +26,7 @@ struct UserStats: Sendable {
     var unlockedBadgeCount: Int { badges.filter(\.unlocked).count }
     var masteryPercent: Int { totalTopics == 0 ? 0 : (topicsMastered * 100) / totalTopics }
 
-    static let empty = UserStats(
+    nonisolated(unsafe) static let empty = UserStats(
         streakDays: 0, totalPoints: 0, accuracyPercent: 0,
         badges: [], topicsMastered: 0, totalTopics: 0, lastAttempt: nil
     )
