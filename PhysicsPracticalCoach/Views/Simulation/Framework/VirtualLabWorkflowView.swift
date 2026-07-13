@@ -309,6 +309,7 @@ private struct CollectApparatusStageView: View {
     @State private var benchFrame: CGRect = .zero
     @State private var isChecking = false
     @State private var checkPassed = false
+    @State private var isDraggingCard = false
 
     private var slots: [BenchSlot] { BenchSlot.layout(for: viewModel.experiment.apparatusItems) }
 
@@ -385,6 +386,7 @@ private struct CollectApparatusStageView: View {
                         ShelfApparatusCard(
                             item: item,
                             isPlaced: viewModel.placedApparatus.contains(item.id),
+                            onDragStateChange: { dragging in isDraggingCard = dragging },
                             onDrop: { dropPoint in handleDrop(of: item, at: dropPoint) }
                         )
                     }
@@ -392,6 +394,9 @@ private struct CollectApparatusStageView: View {
                 .padding(.horizontal, 4)
                 .padding(.vertical, 6)
             }
+            .scrollClipDisabled()
+            .scrollDisabled(isDraggingCard)
+            .zIndex(isDraggingCard ? 1 : 0)
         }
         .padding(10)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -580,6 +585,7 @@ private struct WorkbenchGlow: View {
 private struct ShelfApparatusCard: View {
     let item: LabApparatusItem
     let isPlaced: Bool
+    let onDragStateChange: (Bool) -> Void
     let onDrop: (CGPoint) -> Void
 
     @State private var dragTranslation: CGSize = .zero
@@ -629,9 +635,10 @@ private struct ShelfApparatusCard: View {
             }
         )
         .highPriorityGesture(
-            DragGesture(coordinateSpace: .global)
+            DragGesture(minimumDistance: 4, coordinateSpace: .global)
                 .onChanged { value in
                     guard !isPlaced else { return }
+                    if !isDragging { onDragStateChange(true) }
                     isDragging = true
                     dragTranslation = value.translation
                 }
@@ -642,6 +649,7 @@ private struct ShelfApparatusCard: View {
                         y: cardFrame.midY + value.translation.height
                     )
                     onDrop(dropPoint)
+                    onDragStateChange(false)
                     withAnimation(Animation.spring(response: 0.32, dampingFraction: 0.7)) {
                         dragTranslation = .zero
                         isDragging = false
