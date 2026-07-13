@@ -214,7 +214,7 @@ private struct ApparatusIconCanvas: View {
 
     private func drawFallback(context: inout GraphicsContext, size: CGSize) {
         context.draw(
-            Image(systemName: item.systemImage).font(.title2).foregroundColor(tint),
+            Text(Image(systemName: item.systemImage)).font(.title2).foregroundColor(tint),
             at: CGPoint(x: size.width / 2, y: size.height / 2)
         )
     }
