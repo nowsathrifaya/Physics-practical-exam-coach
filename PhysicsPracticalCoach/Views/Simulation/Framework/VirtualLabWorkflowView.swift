@@ -538,7 +538,7 @@ private struct SetUpStageView: View {
                     .frame(maxWidth: .infinity)
             }
         }
-        .animation(.spring(response: 0.35), value: confirmedSteps.count)
+        .animation(.spring(response: 0.35), value: confirmedSteps)
         .animation(.spring(response: 0.35), value: isChecking)
         .onChange(of: confirmedSteps) { _, updatedSteps in
             guard updatedSteps.count == viewModel.experiment.apparatusItems.count else { return }
