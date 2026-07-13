@@ -300,11 +300,10 @@ private struct IntroductionStageView: View {
 
 // MARK: - Stage 2: Collect Apparatus
 
-/// Real per-item drop targets rather than one shared bench — each apparatus
-/// item has its own labelled zone, so dropping a piece of apparatus into a
-/// zone that belongs to something else surfaces that item's own
-/// `placementHint` (teaching, not just rejecting) instead of guessing at
-/// order.
+/// A single shared bench that accepts a drop anywhere on it — each
+/// apparatus item still has its own labelled slot, but the student doesn't
+/// need to aim for it. Dropping a piece of apparatus onto the bench always
+/// places it in its own correct spot.
 private struct CollectApparatusStageView: View {
     let viewModel: VirtualLabWorkflowViewModel
     @State private var benchFrame: CGRect = .zero
@@ -399,9 +398,9 @@ private struct CollectApparatusStageView: View {
     }
 
     /// The wooden workbench — the only valid drop destination. Each
-    /// apparatus item gets a fixed, non-overlapping labelled slot; a drop
-    /// close enough to a slot (no pixel-perfect aim needed) snaps into it,
-    /// and anything released elsewhere simply springs back to the shelf.
+    /// apparatus item has a fixed, non-overlapping labelled slot, but a drop
+    /// anywhere on the bench places the item — no need to aim for the
+    /// slot itself; it always snaps into its own correct spot.
     private var workbench: some View {
         GeometryReader { geo in
             ZStack {
@@ -437,27 +436,14 @@ private struct CollectApparatusStageView: View {
         .shadow(color: .black.opacity(0.18), radius: 10, x: 0, y: 6)
     }
 
-    /// Matches a shelf item's drop point to the nearest bench slot within a
-    /// generous magnetic radius. A drop that lands nowhere near the bench
-    /// (or between slots, too far from any of them) is simply ignored, and
-    /// the shelf card springs back — no pixel-perfect placement required,
-    /// and nothing can land outside the bench by accident.
+    /// Any drop that lands anywhere on the workbench places the apparatus —
+    /// no need to aim for a specific slot or circle. The item always snaps
+    /// into its own correct, pre-assigned position on the bench (rendered by
+    /// `BenchSlot.layout`), so "drop it on the bench" is the only skill the
+    /// student needs; the app figures out exactly where it belongs.
     private func handleDrop(of item: LabApparatusItem, at point: CGPoint) {
         guard benchFrame != .zero, benchFrame.insetBy(dx: -40, dy: -40).contains(point) else { return }
-        let magneticRadius = min(benchFrame.width, benchFrame.height) * 0.22
-
-        let nearest = slots
-            .map { slot -> (id: String, distance: CGFloat) in
-                let center = CGPoint(
-                    x: benchFrame.minX + benchFrame.width * slot.point.x,
-                    y: benchFrame.minY + benchFrame.height * slot.point.y
-                )
-                return (slot.item.id, hypot(center.x - point.x, center.y - point.y))
-            }
-            .min { $0.distance < $1.distance }
-
-        guard let nearest, nearest.distance <= magneticRadius else { return }
-        viewModel.placeApparatus(item, isCorrectDrop: nearest.id == item.id)
+        viewModel.placeApparatus(item, isCorrectDrop: true)
     }
 
     /// Wooden bench: warm gradient, "wood grain" strokes, a faint alignment
