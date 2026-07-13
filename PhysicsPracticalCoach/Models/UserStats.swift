@@ -7,14 +7,14 @@
 
 import Foundation
 
-struct Badge: Identifiable, Hashable {
+struct Badge: Identifiable, Hashable, Sendable {
     let id: String
     let label: String
     let emoji: String
     let unlocked: Bool
 }
 
-struct UserStats {
+struct UserStats: Sendable {
     let streakDays: Int
     let totalPoints: Int
     let accuracyPercent: Int
