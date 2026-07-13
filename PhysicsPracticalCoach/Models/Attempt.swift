@@ -13,7 +13,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class Attempt: Identifiable, @unchecked Sendable {
+final class Attempt: Identifiable {
     /// Matches Room's `id: String` primary key (a UUID string generated at
     /// insert time on Android too).
     @Attribute(.unique) var id: String
