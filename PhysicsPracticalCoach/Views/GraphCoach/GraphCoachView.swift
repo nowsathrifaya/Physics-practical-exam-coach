@@ -19,6 +19,82 @@
 
 import SwiftUI
 
+// MARK: - Graph paper rendering
+
+/// A sensible "units per grid square" step close to `maxValue / targetSquares`,
+/// rounded to 1, 2, 5, or 10 × a power of ten — the same rule real graph
+/// paper and exam mark schemes use, so auto-picked grids never land on an
+/// awkward step like 3 or 7.
+func niceGridStep(for maxValue: Double, targetSquares: Double = 8) -> Double {
+    let raw = max(maxValue, 0.0001) / targetSquares
+    let magnitude = pow(10, floor(log10(raw)))
+    let residual = raw / magnitude
+    let niceResidual: Double = residual <= 1.5 ? 1 : (residual <= 3.5 ? 2 : (residual <= 7.5 ? 5 : 10))
+    return niceResidual * magnitude
+}
+
+func formatGridTick(_ value: Double) -> String {
+    if abs(value.rounded() - value) < 0.0001 {
+        return String(Int(value.rounded()))
+    }
+    return String(format: "%.2g", value)
+}
+
+/// Draws real-graph-paper-style axes: light minor gridlines at every step,
+/// darker major gridlines every `majorEvery` steps, and numbered tick
+/// labels along both axes at each major line (e.g. 0, 2, 4, 6, 8, 10).
+func drawGraphPaper(
+    context: GraphicsContext,
+    plotRect: CGRect,
+    maxX: Double,
+    maxY: Double,
+    stepX: Double,
+    stepY: Double,
+    majorEvery: Int = 5
+) {
+    guard stepX > 0, stepY > 0, maxX > 0, maxY > 0 else { return }
+    let columns = max(1, Int((maxX / stepX).rounded()))
+    let rows = max(1, Int((maxY / stepY).rounded()))
+
+    var minor = Path()
+    var major = Path()
+
+    for c in 0...columns {
+        let x = plotRect.minX + plotRect.width * CGFloat(c) / CGFloat(columns)
+        var line = Path()
+        line.move(to: CGPoint(x: x, y: plotRect.minY))
+        line.addLine(to: CGPoint(x: x, y: plotRect.maxY))
+        if c % majorEvery == 0 { major.addPath(line) } else { minor.addPath(line) }
+    }
+    for r in 0...rows {
+        // r = 0 at the bottom (the origin), increasing upward — matches
+        // domain values, which grow upward on the screen.
+        let y = plotRect.maxY - plotRect.height * CGFloat(r) / CGFloat(rows)
+        var line = Path()
+        line.move(to: CGPoint(x: plotRect.minX, y: y))
+        line.addLine(to: CGPoint(x: plotRect.maxX, y: y))
+        if r % majorEvery == 0 { major.addPath(line) } else { minor.addPath(line) }
+    }
+
+    context.stroke(minor, with: .color(.secondary.opacity(0.15)), lineWidth: 0.5)
+    context.stroke(major, with: .color(.secondary.opacity(0.45)), lineWidth: 1)
+
+    for c in stride(from: 0, through: columns, by: majorEvery) {
+        let x = plotRect.minX + plotRect.width * CGFloat(c) / CGFloat(columns)
+        context.draw(
+            Text(formatGridTick(Double(c) * stepX)).font(.system(size: 9)).foregroundStyle(.secondary),
+            at: CGPoint(x: x, y: plotRect.maxY + 11)
+        )
+    }
+    for r in stride(from: 0, through: rows, by: majorEvery) {
+        let y = plotRect.maxY - plotRect.height * CGFloat(r) / CGFloat(rows)
+        context.draw(
+            Text(formatGridTick(Double(r) * stepY)).font(.system(size: 9)).foregroundStyle(.secondary),
+            at: CGPoint(x: plotRect.minX - 15, y: y)
+        )
+    }
+}
+
 struct GraphCoachListView: View {
     let profile: CurriculumProfile
     @State private var practiceMode: GraphCoachPracticeMode = .fullExam
@@ -750,19 +826,19 @@ private struct InteractivePlotCanvas: View {
 
     var body: some View {
         GeometryReader { geo in
-            let margin: CGFloat = 40
+            let margin: CGFloat = 44
             let plotRect = CGRect(x: margin, y: 16, width: geo.size.width - margin - 16, height: geo.size.height - margin - 32)
 
             ZStack(alignment: .topLeading) {
                 Canvas { context, size in
-                    drawGrid(context: context, plotRect: plotRect)
+                    drawGraphPaper(context: context, plotRect: plotRect, maxX: axisMaxX, maxY: axisMaxY, stepX: effectiveScaleX, stepY: effectiveScaleY)
                     var axes = Path()
                     axes.move(to: CGPoint(x: plotRect.minX, y: plotRect.minY))
                     axes.addLine(to: CGPoint(x: plotRect.minX, y: plotRect.maxY))
                     axes.addLine(to: CGPoint(x: plotRect.maxX, y: plotRect.maxY))
                     context.stroke(axes, with: .color(.primary), lineWidth: 1.5)
                     context.draw(Text(definition.xLabel).font(.caption2), at: CGPoint(x: plotRect.midX, y: size.height - 8))
-                    context.draw(Text(definition.yLabel).font(.caption2).italic(), at: CGPoint(x: 14, y: plotRect.midY), anchor: .center)
+                    context.draw(Text(definition.yLabel).font(.caption2).italic(), at: CGPoint(x: 8, y: plotRect.midY), anchor: .center)
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { location in
@@ -794,23 +870,6 @@ private struct InteractivePlotCanvas: View {
         }
         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityLabel("Interactive plot of \(definition.label). Tap to place points.")
-    }
-
-    private func drawGrid(context: GraphicsContext, plotRect: CGRect) {
-        let columns = max(2, Int((axisMaxX / effectiveScaleX).rounded()))
-        let rows = max(2, Int((axisMaxY / effectiveScaleY).rounded()))
-        var grid = Path()
-        for c in 0...columns {
-            let x = plotRect.minX + plotRect.width * CGFloat(c) / CGFloat(columns)
-            grid.move(to: CGPoint(x: x, y: plotRect.minY))
-            grid.addLine(to: CGPoint(x: x, y: plotRect.maxY))
-        }
-        for r in 0...rows {
-            let y = plotRect.minY + plotRect.height * CGFloat(r) / CGFloat(rows)
-            grid.move(to: CGPoint(x: plotRect.minX, y: y))
-            grid.addLine(to: CGPoint(x: plotRect.maxX, y: y))
-        }
-        context.stroke(grid, with: .color(.secondary.opacity(0.18)), lineWidth: 0.5)
     }
 
     private func screenPoint(for p: GraphPoint, plotRect: CGRect) -> CGPoint {
@@ -906,18 +965,24 @@ private struct BestFitLineCanvas: View {
 
     var body: some View {
         GeometryReader { geo in
-            let margin: CGFloat = 40
+            let margin: CGFloat = 44
             let plotRect = CGRect(x: margin, y: 16, width: geo.size.width - margin - 16, height: geo.size.height - margin - 32)
             let startScreen = screenPoint(for: start, plotRect: plotRect)
             let endScreen = screenPoint(for: end, plotRect: plotRect)
 
             ZStack {
                 Canvas { context, size in
+                    drawGraphPaper(
+                        context: context, plotRect: plotRect, maxX: axisMaxX, maxY: axisMaxY,
+                        stepX: niceGridStep(for: axisMaxX), stepY: niceGridStep(for: axisMaxY)
+                    )
                     var axes = Path()
                     axes.move(to: CGPoint(x: plotRect.minX, y: plotRect.minY))
                     axes.addLine(to: CGPoint(x: plotRect.minX, y: plotRect.maxY))
                     axes.addLine(to: CGPoint(x: plotRect.maxX, y: plotRect.maxY))
                     context.stroke(axes, with: .color(.primary), lineWidth: 1.5)
+                    context.draw(Text(definition.xLabel).font(.caption2), at: CGPoint(x: plotRect.midX, y: size.height - 8))
+                    context.draw(Text(definition.yLabel).font(.caption2).italic(), at: CGPoint(x: 8, y: plotRect.midY), anchor: .center)
 
                     for p in points {
                         let center = CGPoint(
@@ -1031,18 +1096,24 @@ private struct GradientTriangleTool: View {
 
     var body: some View {
         GeometryReader { geo in
-            let margin: CGFloat = 40
+            let margin: CGFloat = 44
             let plotRect = CGRect(x: margin, y: 16, width: geo.size.width - margin - 16, height: geo.size.height - margin - 32)
             let startScreen = CGPoint(x: plotRect.minX + lineStart.x * plotRect.width, y: plotRect.minY + lineStart.y * plotRect.height)
             let endScreen = CGPoint(x: plotRect.minX + lineEnd.x * plotRect.width, y: plotRect.minY + lineEnd.y * plotRect.height)
 
             ZStack {
                 Canvas { context, size in
+                    drawGraphPaper(
+                        context: context, plotRect: plotRect, maxX: axisMaxX, maxY: axisMaxY,
+                        stepX: niceGridStep(for: axisMaxX), stepY: niceGridStep(for: axisMaxY)
+                    )
                     var axes = Path()
                     axes.move(to: CGPoint(x: plotRect.minX, y: plotRect.minY))
                     axes.addLine(to: CGPoint(x: plotRect.minX, y: plotRect.maxY))
                     axes.addLine(to: CGPoint(x: plotRect.maxX, y: plotRect.maxY))
                     context.stroke(axes, with: .color(.primary), lineWidth: 1.5)
+                    context.draw(Text(definition.xLabel).font(.caption2), at: CGPoint(x: plotRect.midX, y: size.height - 8))
+                    context.draw(Text(definition.yLabel).font(.caption2).italic(), at: CGPoint(x: 8, y: plotRect.midY), anchor: .center)
 
                     for p in points {
                         let center = CGPoint(
@@ -1213,16 +1284,21 @@ struct ScatterPlotCanvasView: View {
 
     var body: some View {
         Canvas { context, size in
-            let margin: CGFloat = 36
+            let margin: CGFloat = 44
             let plotRect = CGRect(x: margin, y: 12, width: size.width - margin - 12, height: size.height - margin - 24)
+
+            guard let maxX = dataset.points.map(\.x).max(), let maxY = dataset.points.map(\.y).max(), maxX > 0, maxY > 0 else { return }
+
+            drawGraphPaper(
+                context: context, plotRect: plotRect, maxX: maxX, maxY: maxY,
+                stepX: niceGridStep(for: maxX), stepY: niceGridStep(for: maxY)
+            )
 
             var axes = Path()
             axes.move(to: CGPoint(x: plotRect.minX, y: plotRect.minY))
             axes.addLine(to: CGPoint(x: plotRect.minX, y: plotRect.maxY))
             axes.addLine(to: CGPoint(x: plotRect.maxX, y: plotRect.maxY))
             context.stroke(axes, with: .color(.primary), lineWidth: 1.5)
-
-            guard let maxX = dataset.points.map(\.x).max(), let maxY = dataset.points.map(\.y).max(), maxX > 0, maxY > 0 else { return }
 
             func point(_ p: GraphPoint) -> CGPoint {
                 CGPoint(
@@ -1244,7 +1320,7 @@ struct ScatterPlotCanvasView: View {
             context.draw(Text(definition.xLabel).font(.caption2), at: CGPoint(x: plotRect.midX, y: size.height - 8))
             context.draw(
                 Text(definition.yLabel).font(.caption2).italic(),
-                at: CGPoint(x: 14, y: plotRect.midY),
+                at: CGPoint(x: 8, y: plotRect.midY),
                 anchor: .center
             )
         }
