@@ -194,7 +194,7 @@ private struct FlawedGraphView: View {
             }
 
             Canvas { context, size in
-                let margin: CGFloat = 36
+                let margin: CGFloat = 44
                 let squeeze: CGFloat = challenge.mistake == .wrongScale ? 0.45 : 1.0
                 let plotRect = CGRect(
                     x: margin, y: 12,
@@ -202,13 +202,18 @@ private struct FlawedGraphView: View {
                     height: (size.height - margin - 24) * squeeze
                 )
 
+                guard let maxX = displayedPoints.map(\.x).max(), let maxY = displayedPoints.map(\.y).max(), maxX > 0, maxY > 0 else { return }
+
+                drawGraphPaper(
+                    context: context, plotRect: plotRect, maxX: maxX, maxY: maxY,
+                    stepX: niceGridStep(for: maxX), stepY: niceGridStep(for: maxY)
+                )
+
                 var axes = Path()
                 axes.move(to: CGPoint(x: plotRect.minX, y: plotRect.minY))
                 axes.addLine(to: CGPoint(x: plotRect.minX, y: plotRect.maxY))
                 axes.addLine(to: CGPoint(x: plotRect.maxX, y: plotRect.maxY))
                 context.stroke(axes, with: .color(.primary), lineWidth: 1.5)
-
-                guard let maxX = displayedPoints.map(\.x).max(), let maxY = displayedPoints.map(\.y).max(), maxX > 0, maxY > 0 else { return }
 
                 func screenPoint(_ p: GraphPoint) -> CGPoint {
                     CGPoint(
@@ -248,7 +253,7 @@ private struct FlawedGraphView: View {
                 context.draw(Text(xLabel + xUnitSuffix).font(.caption2), at: CGPoint(x: plotRect.midX, y: size.height - 8))
                 context.draw(
                     Text(challenge.definition.yLabel + yUnitSuffix).font(.caption2).italic(),
-                    at: CGPoint(x: 14, y: plotRect.midY),
+                    at: CGPoint(x: 8, y: plotRect.midY),
                     anchor: .center
                 )
             }
