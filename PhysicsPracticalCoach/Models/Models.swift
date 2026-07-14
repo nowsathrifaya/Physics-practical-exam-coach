@@ -92,6 +92,7 @@ enum GraphCoachType: String, CaseIterable, Codable, Identifiable {
     case tSquaredVsLength = "T_SQUARED_VS_LENGTH"
     case sinIVsSinR = "SIN_I_VS_SIN_R"
     case potentialGradient = "POTENTIAL_GRADIENT"
+    case reciprocalLensDistances = "RECIPROCAL_LENS_DISTANCES"
 
     var id: String { rawValue }
 
@@ -147,6 +148,13 @@ enum GraphCoachType: String, CaseIterable, Codable, Identifiable {
                 xLabel: "Length l", xUnit: "m",
                 yLabel: "Voltage V", yUnit: "V",
                 gradientMeaning: "Gradient gives the potential gradient K = I \u{00D7} r (volts per metre of wire)."
+            )
+        case .reciprocalLensDistances:
+            return Definition(
+                label: "1/v vs 1/u (Converging Lens)",
+                xLabel: "1/u", xUnit: "cm\u{207B}\u{00B9}",
+                yLabel: "1/v", yUnit: "cm\u{207B}\u{00B9}",
+                gradientMeaning: "Gradient should be about \u{2212}1 \u{2014} a check on your readings, not the answer. The y-intercept equals 1/f, so f = 1 \u{00F7} intercept."
             )
         }
     }
