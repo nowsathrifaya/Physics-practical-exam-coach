@@ -36,11 +36,29 @@ struct VirtualLabWorkflowView<CoreContent: View>: View {
                         removal: .opacity
                     ))
             }
+            .background {
+                if usesLabRoomBackdrop {
+                    LabRoomBackdrop()
+                } else {
+                    Color(.systemGroupedBackground)
+                }
+            }
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle(viewModel.experiment.title)
         .navigationBarTitleDisplayMode(.inline)
         .animation(.easeOut(duration: 0.25), value: viewModel.stage)
+    }
+
+    /// The three "getting ready" stages get the illustrated lab-room
+    /// backdrop; the data-heavy stages (perform, questions, results, ...)
+    /// stay on a plain grouped background so tables/charts/forms stay easy
+    /// to read.
+    private var usesLabRoomBackdrop: Bool {
+        switch viewModel.stage {
+        case .introduction, .collectApparatus, .setUp: true
+        default: false
+        }
     }
 
     @ViewBuilder
@@ -274,10 +292,14 @@ private struct IntroductionStageView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text(viewModel.experiment.title)
-                .font(.largeTitle.bold())
+            HStack(alignment: .top, spacing: 12) {
+                LabCoachAvatar()
+                Text(viewModel.experiment.title)
+                    .font(.largeTitle.bold())
+            }
 
-            labelledSection(title: "Aim", text: viewModel.experiment.aim)
+            WhiteboardCard(eyebrow: "Today's Aim", text: viewModel.experiment.aim)
+
             labelledSection(title: "Theory", text: viewModel.experiment.theory)
             labelledSection(title: "Learning outcome", text: viewModel.experiment.learningOutcome)
 
@@ -321,9 +343,13 @@ private struct CollectApparatusStageView: View {
                 Text("\(viewModel.experiment.apparatusStageMarks) marks").font(.caption).foregroundStyle(.secondary)
             }
 
-            Text("Pick up apparatus from the shelf and carry it to its spot on the workbench.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            HStack(alignment: .top, spacing: 12) {
+                LabCoachAvatar(size: 44)
+                WhiteboardCard(
+                    eyebrow: "Step \(LabExperimentStage.collectApparatus.rawValue + 1)",
+                    text: "Pick up apparatus from the shelf and carry it to its spot on the workbench."
+                )
+            }
 
             if let hint = viewModel.apparatusHint {
                 Label(hint, systemImage: "lightbulb.fill")
@@ -703,9 +729,13 @@ private struct SetUpStageView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Assemble the apparatus in order. Tap each step once you've done it.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            HStack(alignment: .top, spacing: 12) {
+                LabCoachAvatar(size: 44)
+                WhiteboardCard(
+                    eyebrow: "Step \(LabExperimentStage.setUp.rawValue + 1)",
+                    text: "Assemble the apparatus in order. Tap each step once you've done it."
+                )
+            }
 
             ForEach(viewModel.experiment.apparatusItems) { item in
                 SetUpStepRow(
