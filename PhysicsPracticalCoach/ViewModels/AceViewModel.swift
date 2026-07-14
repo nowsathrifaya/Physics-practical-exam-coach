@@ -60,18 +60,26 @@ final class AceViewModel {
     private(set) var mockExamFinished = false
     private nonisolated(unsafe) var mockExamTimer: Timer?
 
+    /// Optional cap for a short "Quick Quiz" session (e.g. 5–10 questions).
+    /// `nil` means unlimited, matching the existing "Practice all" /
+    /// "Practice this topic" behaviour.
+    let questionLimit: Int?
+    private(set) var quizFinished = false
+
     init(
         repository: AttemptRepository,
         curriculum: Curriculum = .general,
         filterTopic: AceTopic? = nil,
         filterSkill: AceSkillArea? = nil,
         isMockExam: Bool = false,
-        mockExamMinutes: Int = 30
+        mockExamMinutes: Int = 30,
+        questionLimit: Int? = nil
     ) {
         self.repository = repository
         self.activeCurriculum = curriculum
         self.isMockExam = isMockExam
         self.mockExamSecondsRemaining = mockExamMinutes * 60
+        self.questionLimit = questionLimit
 
         let basePool: [AceQuestion]
         if let filterTopic {
@@ -129,7 +137,12 @@ final class AceViewModel {
             feedback: [correct ? "Self-marked correct" : "Self-marked incorrect"]
         )
 
-        advanceToNextQuestion()
+        if let questionLimit, sessionStats.answered >= questionLimit {
+            quizFinished = true
+            currentQuestion = nil
+        } else {
+            advanceToNextQuestion()
+        }
     }
 
     func skipQuestion() {

@@ -73,16 +73,20 @@ struct AceListView: View {
 struct AcePracticeSessionView: View {
     @State private var viewModel: AceViewModel
     @Environment(\.dismiss) private var dismiss
+    private let sessionTitle: String?
 
     init(
         repository: AttemptRepository, curriculum: Curriculum,
         filterTopic: AceTopic?, filterSkill: AceSkillArea?,
-        isMockExam: Bool, mockExamMinutes: Int
+        isMockExam: Bool, mockExamMinutes: Int,
+        questionLimit: Int? = nil, sessionTitle: String? = nil
     ) {
+        self.sessionTitle = sessionTitle
         _viewModel = State(initialValue: AceViewModel(
             repository: repository, curriculum: curriculum,
             filterTopic: filterTopic, filterSkill: filterSkill,
-            isMockExam: isMockExam, mockExamMinutes: mockExamMinutes
+            isMockExam: isMockExam, mockExamMinutes: mockExamMinutes,
+            questionLimit: questionLimit
         ))
     }
 
@@ -104,7 +108,7 @@ struct AcePracticeSessionView: View {
             .padding(20)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle(viewModel.isMockExam ? "Mock Exam" : "ACE Practice")
+        .navigationTitle(sessionTitle ?? (viewModel.isMockExam ? "Mock Exam" : "ACE Practice"))
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(viewModel.isMockExam && !viewModel.mockExamFinished)
         .toolbar {
@@ -114,8 +118,8 @@ struct AcePracticeSessionView: View {
                 }
             }
         }
-        .alert("Mock exam complete", isPresented: Binding(
-            get: { viewModel.mockExamFinished },
+        .alert(viewModel.isMockExam ? "Mock exam complete" : "Quiz complete", isPresented: Binding(
+            get: { viewModel.mockExamFinished || viewModel.quizFinished },
             set: { _ in }
         )) {
             Button("Done") { dismiss() }

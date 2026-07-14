@@ -26,6 +26,22 @@ final class HomeViewModel {
         UserStatsCalculator.compute(attempts: attempts, profile: CurriculumProfiles.forCurriculum(curriculum))
     }
 
+    /// Snapshot of just today's activity for the Home screen's
+    /// "Today's Progress" card.
+    var todayProgress: TodayProgress {
+        UserStatsCalculator.computeTodayProgress(attempts: attempts)
+    }
+
+    /// Today's featured experiment for the Daily Practical Challenge banner.
+    /// Deterministic per calendar day (same challenge all day, changes daily)
+    /// so it isn't re-rolled on every Home screen visit.
+    var dailyChallenge: SimulationType? {
+        let profile = CurriculumProfiles.forCurriculum(curriculum)
+        guard !profile.simulations.isEmpty else { return nil }
+        let dayOfYear = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 1
+        return profile.simulations[dayOfYear % profile.simulations.count]
+    }
+
     init(preferences: UserPreferences, attemptRepository: AttemptRepository) {
         self.preferences = preferences
         self.attemptRepository = attemptRepository

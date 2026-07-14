@@ -102,4 +102,74 @@ enum UserStatsCalculator {
         let today = calendar.startOfDay(for: Date())
         return attempts.contains { calendar.startOfDay(for: $0.completedAt) == today }
     }
+
+    /// True if `attempts` contains a completed attempt today whose `target`
+    /// matches `target` — used to check off the Daily Practical Challenge
+    /// once the student has completed today's featured experiment.
+    static func hasCompletedToday(_ attempts: [Attempt], target: String) -> Bool {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return attempts.contains {
+            $0.target == target && calendar.startOfDay(for: $0.completedAt) == today
+        }
+    }
+
+    /// Powers the Home screen's "Today's Progress" card: a small snapshot of
+    /// activity in just the last 24 hours, distinct from the all-time
+    /// `UserStats` above. Nothing here is fabricated — every number is
+    /// derived from attempts actually completed today.
+    static func computeTodayProgress(attempts: [Attempt]) -> TodayProgress {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let todayAttempts = attempts.filter { calendar.startOfDay(for: $0.completedAt) == today }
+
+        let experimentsToday = Set(
+            todayAttempts.filter { $0.modeValue == .simulationLab }.map(\.target)
+        ).count
+        let apparatusToday = todayAttempts.filter { $0.modeValue == .apparatusPractice }.count
+        let xpToday = todayAttempts.reduce(0) { $0 + $1.score }
+
+        // Daily goal is framed as "8 practice items a day" — apparatus
+        // readings, graph steps, ACE questions, or lab experiments each
+        // count once towards it.
+        let dailyGoalTarget = 8
+        let dailyGoalPercent = min(100, Int((Double(todayAttempts.count) / Double(dailyGoalTarget) * 100).rounded()))
+
+        // Monday-first week strip (M T W T F S S), regardless of the
+        // device's regional first-weekday setting.
+        let daySet = Set(attempts.map { calendar.startOfDay(for: $0.completedAt) })
+        let weekdayOfToday = calendar.component(.weekday, from: today) // Sun = 1 ... Sat = 7
+        let daysSinceMonday = (weekdayOfToday + 5) % 7
+        let monday = calendar.date(byAdding: .day, value: -daysSinceMonday, to: today) ?? today
+        var weekActivity: [Bool] = []
+        for offset in 0..<7 {
+            let day = calendar.date(byAdding: .day, value: offset, to: monday) ?? monday
+            weekActivity.append(day <= today && daySet.contains(day))
+        }
+
+        return TodayProgress(
+            dailyGoalPercent: dailyGoalPercent,
+            experimentsToday: experimentsToday,
+            apparatusToday: apparatusToday,
+            xpToday: xpToday,
+            weekActivity: weekActivity
+        )
+    }
+}
+
+/// Snapshot of just today's activity, shown on the Home screen's
+/// "Today's Progress" card.
+struct TodayProgress {
+    let dailyGoalPercent: Int
+    let experimentsToday: Int
+    let apparatusToday: Int
+    let xpToday: Int
+    /// 7 entries, Monday first, true where the student completed at least
+    /// one attempt (any curriculum) on that day.
+    let weekActivity: [Bool]
+
+    nonisolated(unsafe) static let empty = TodayProgress(
+        dailyGoalPercent: 0, experimentsToday: 0, apparatusToday: 0, xpToday: 0,
+        weekActivity: Array(repeating: false, count: 7)
+    )
 }

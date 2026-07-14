@@ -52,20 +52,34 @@ struct SimulationListView: View {
 
     @ViewBuilder
     private func simulationDestination(for type: SimulationType) -> some View {
+        SimulationDestinationView(type: type, curriculum: profile.curriculum)
+    }
+}
+
+/// Resolves a `SimulationType` to its concrete lab view. Shared by
+/// `SimulationListView`, the Home screen's Continue-Learning card, Random
+/// Experiment quick action, and the Daily Practical Challenge banner, so
+/// there's exactly one place that maps experiment types to their views.
+struct SimulationDestinationView: View {
+    let type: SimulationType
+    let curriculum: Curriculum
+    @Environment(\.modelContext) private var modelContext
+
+    var body: some View {
         let repository = AttemptRepository(modelContext: modelContext)
         switch type {
         case .pendulum:
-            PendulumVirtualLabView(curriculum: profile.curriculum, repository: repository)
+            PendulumVirtualLabView(curriculum: curriculum, repository: repository)
         case .springExtension:
-            SpringLabView(curriculum: profile.curriculum, repository: repository)
+            SpringLabView(curriculum: curriculum, repository: repository)
         case .ohmsLaw:
-            OhmsLawLabView(curriculum: profile.curriculum, repository: repository)
+            OhmsLawLabView(curriculum: curriculum, repository: repository)
         case .densityDisplacement:
-            DensityLabView(curriculum: profile.curriculum, repository: repository)
+            DensityLabView(curriculum: curriculum, repository: repository)
         case .moments:
-            MomentsLabView(curriculum: profile.curriculum, repository: repository)
+            MomentsLabView(curriculum: curriculum, repository: repository)
         case .potentiometer:
-            PotentiometerLabView(curriculum: profile.curriculum, repository: repository)
+            PotentiometerLabView(curriculum: curriculum, repository: repository)
         default:
             GenericSimulationView(type: type)
         }

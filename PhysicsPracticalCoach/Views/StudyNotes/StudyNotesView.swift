@@ -377,19 +377,36 @@ struct StudyNotesListView: View {
     let curriculum: Curriculum
 
     var body: some View {
-        List(StudyNoteCategory.allCases) { category in
-            NavigationLink {
-                StudyNoteCategoryDetailView(category: category, curriculum: curriculum)
-            } label: {
-                HStack(spacing: 12) {
-                    Text(category.emoji).font(.title2)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(category.label).font(.headline)
-                        Text("\(StudyNotesBank.forCategory(category, curriculum: curriculum).count) note(s)")
-                            .font(.caption).foregroundStyle(.secondary)
+        List {
+            Section("Exam prep") {
+                NavigationLink {
+                    LastMinuteRevisionView()
+                } label: {
+                    Label("Last Minute Revision", systemImage: "book.fill")
+                }
+                NavigationLink {
+                    AnsweringTechniquesListView(curriculum: curriculum)
+                } label: {
+                    Label("Answering Techniques", systemImage: "pencil.and.list.clipboard")
+                }
+            }
+
+            Section("Study notes") {
+                ForEach(StudyNoteCategory.allCases) { category in
+                    NavigationLink {
+                        StudyNoteCategoryDetailView(category: category, curriculum: curriculum)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Text(category.emoji).font(.title2)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(category.label).font(.headline)
+                                Text("\(StudyNotesBank.forCategory(category, curriculum: curriculum).count) note(s)")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
                     }
                 }
-                .padding(.vertical, 4)
             }
         }
         .navigationTitle("Study Notes")
