@@ -225,7 +225,7 @@ final class CoolingCurveExperimentViewModel {
             correct: correct,
             score: correct ? 100 : (freezingPointCorrect ? 70 : 40),
             feedback: feedback,
-            examTip: "Plot temperature (y) against time (x). Where the line goes flat, the substance is solidifying and releasing latent heat at a constant rate \u2014 that flat temperature is the freezing point, read directly off the y-axis, not the time axis."
+            examTip: "Plot temperature (y) against time (x). Where the line goes flat, the substance is solidifying and releasing latent heat at a constant rate \u{2014} that flat temperature is the freezing point, read directly off the y-axis, not the time axis."
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.coolingCurve.label, result: outcome)

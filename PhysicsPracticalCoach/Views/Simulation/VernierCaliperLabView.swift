@@ -179,7 +179,7 @@ final class VernierExperimentViewModel {
             correct: correct,
             score: correct ? 100 : (meanCorrect ? 70 : 40),
             feedback: feedback,
-            examTip: "Least count = 0.01 cm: main scale mark just before the vernier zero, plus the ONE vernier line that lines up exactly with a main-scale line \u{00D7} 0.01 cm. Always apply the given zero error \u2014 subtract if positive, add if negative \u2014 before averaging, and take at least 3 readings along the rod since it may not be perfectly uniform."
+            examTip: "Least count = 0.01 cm: main scale mark just before the vernier zero, plus the ONE vernier line that lines up exactly with a main-scale line \u{00D7} 0.01 cm. Always apply the given zero error \u{2014} subtract if positive, add if negative \u{2014} before averaging, and take at least 3 readings along the rod since it may not be perfectly uniform."
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.vernierCaliper.label, result: outcome)
