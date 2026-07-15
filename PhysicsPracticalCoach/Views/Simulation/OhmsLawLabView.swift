@@ -102,6 +102,7 @@ final class OhmsLawExperimentViewModel {
             guard let voltage = reading.derivedValue else { return nil }
             return RegressionPoint(x: reading.value, y: voltage)
         }
+        guard points.count >= 2 else { return } // defensive: LinearRegression.fit requires >=2
         let regression = LinearRegression.fit(points)
         let studentR = regression.slope
         let tolerance = apparatus.trueResistanceOhm * 0.15

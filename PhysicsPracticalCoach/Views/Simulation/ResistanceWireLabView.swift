@@ -1,0 +1,443 @@
+//
+//  ResistanceWireLabView.swift
+//  PhysicsPracticalCoach
+//
+//  Resistance of a Wire lab experiment, built on the Lab framework (see
+//  `PendulumLabView.swift` for the reference template and
+//  `LAB_FRAMEWORK.md` for the architecture). Ninth lab, combining two
+//  existing primitives in a new way rather than inventing a fresh
+//  mechanic: the wire-and-sliding-contact drag from `PotentiometerLabView`
+//  (here the contact sets the length of wire actually in circuit, not a
+//  jockey tap-point), paired with the dual ammeter/voltmeter typed reading
+//  from `OhmsLawLabView`.
+//
+//  EXAM DESIGN: because the sliding contact changes both which length of
+//  wire is between the terminals AND the total circuit resistance, current
+//  genuinely changes with length with no separate rheostat needed \u2014 exactly
+//  how the real "Resistance of a Wire" circuit behaves. At each length the
+//  student reads the ammeter and voltmeter themselves (their own reading
+//  care is the only source of error, same convention as every dial in the
+//  app) and R = V/I is computed per trial. The final graph plots R (y)
+//  against l (x) \u2014 the exact axes `AceQuestionBank.resis_ace_01` asks
+//  students to interpret \u2014 with resistivity \u03C1 recovered from the given
+//  cross-sectional area A and the gradient (\u03C1 = gradient \u00D7 A), matching
+//  that question's model answer precisely rather than approximating it.
+//
+
+import SwiftUI
+
+// MARK: - 1. Apparatus state
+
+@Observable
+final class ResistanceWireLabState {
+    static let wireLengthM: Double = 1.00
+    private static let minTestLengthM: Double = 0.10
+
+    /// Hidden true resistivity of the test wire (\u03A9\u00B7m) \u2014 typical of a thin
+    /// nichrome-like wire used in this experiment.
+    let trueResistivityOhmM: Double
+    /// Given cross-sectional area (mm\u00B2) \u2014 as if pre-measured with a
+    /// micrometer and quoted on the question paper, matching how a real
+    /// exam supplies A so students only need to find \u03C1 from the gradient.
+    let crossSectionAreaMm2: Double
+    /// Hidden driver EMF (V).
+    private let emfV: Double
+    /// Hidden fixed resistance from the cell's internal resistance, the
+    /// ammeter, and the leads (\u03A9) \u2014 there is no rheostat in this circuit;
+    /// changing the test length is what changes the current.
+    private let fixedResistanceOhm: Double
+
+    /// Length of wire currently between the two circuit contacts (m) \u2014 the
+    /// student's own choice, set by dragging the sliding contact.
+    private(set) var testLengthM: Double
+
+    init(seed: Int) {
+        var rng = SeededRandomNumberGenerator(seed: seed)
+        trueResistivityOhmM = rng.nextDouble(0.9e-6, 1.3e-6)
+        crossSectionAreaMm2 = ((rng.nextDouble(0.05, 0.15)) * 1000).rounded() / 1000
+        emfV = ((rng.nextDouble(1.5, 3.0)) * 10).rounded() / 10
+        fixedResistanceOhm = ((rng.nextDouble(1.0, 3.0)) * 10).rounded() / 10
+        testLengthM = rng.nextDouble(Self.minTestLengthM, Self.wireLengthM)
+    }
+
+    /// True resistance per metre = \u03C1/A (\u03A9/m) \u2014 what the R-l graph's
+    /// gradient should equal.
+    var resistancePerMetreOhm: Double {
+        trueResistivityOhmM / (crossSectionAreaMm2 * 1e-6)
+    }
+
+    private var testResistanceOhm: Double { resistancePerMetreOhm * testLengthM }
+
+    /// True circuit current at the current test length (A) \u2014 never shown
+    /// as text, only rendered as a needle position.
+    var trueCurrentA: Double {
+        emfV / (fixedResistanceOhm + testResistanceOhm)
+    }
+
+    /// True voltmeter reading across the test length (V).
+    var trueVoltageV: Double {
+        trueCurrentA * testResistanceOhm
+    }
+
+    func setTestLength(_ value: Double) {
+        testLengthM = min(max(value, Self.minTestLengthM), Self.wireLengthM)
+    }
+}
+
+// MARK: - 2. Experiment view model
+
+@MainActor
+@Observable
+final class ResistanceWireExperimentViewModel {
+    private(set) var apparatus: ResistanceWireLabState
+    private let recorder: LabAttemptRecorder
+
+    var testLengthM: Double {
+        get { apparatus.testLengthM }
+        set { apparatus.setTestLength(newValue) }
+    }
+
+    private(set) var readings: [LabReading] = []
+    private(set) var result: LabRunResult?
+    var ammeterInput: String = ""
+    var voltmeterInput: String = ""
+
+    init(recorder: LabAttemptRecorder, seed: Int) {
+        self.recorder = recorder
+        self.apparatus = ResistanceWireLabState(seed: seed)
+    }
+
+    var instructionText: String {
+        "Slide the contact to a new length, given a wire cross-sectional area A = \(format(apparatus.crossSectionAreaMm2, places: 3)) mm\u{00B2}. Read the ammeter and voltmeter, then record them."
+    }
+
+    func recordReading() {
+        guard
+            let ammeterValue = Double(ammeterInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")),
+            let voltmeterValue = Double(voltmeterInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")),
+            ammeterValue > 0
+        else { return }
+
+        let resistanceOhm = voltmeterValue / ammeterValue
+        readings.append(LabReading(
+            trialNumber: readings.count + 1,
+            label: "Length l", value: (apparatus.testLengthM * 100).rounded() / 100, unit: "m",
+            derivedLabel: "Resistance R (from V/I)", derivedValue: (resistanceOhm * 100).rounded() / 100, derivedUnit: "\u{03A9}"
+        ))
+        ammeterInput = ""
+        voltmeterInput = ""
+    }
+
+    var canCalculate: Bool { readings.count >= 2 }
+
+    func calculateResult() {
+        guard canCalculate else { return }
+        // R (y) vs l (x) -> gradient = resistivity / area, matching
+        // AceQuestionBank.resis_ace_01's exact axis convention.
+        let points = readings.compactMap { reading -> RegressionPoint? in
+            guard let resistance = reading.derivedValue else { return nil }
+            return RegressionPoint(x: reading.value, y: resistance)
+        }
+        let regression = LinearRegression.fit(points)
+        let studentGradient = regression.slope
+        let areaM2 = apparatus.crossSectionAreaMm2 * 1e-6
+        let studentResistivityOhmM = studentGradient * areaM2
+
+        let tolerance = apparatus.trueResistivityOhmM * 0.15
+        let resistivityCorrect = abs(studentResistivityOhmM - apparatus.trueResistivityOhmM) <= tolerance
+
+        let lengths = readings.map(\.value)
+        let spread = (lengths.max() ?? 0) - (lengths.min() ?? 0)
+        let spreadCorrect = spread >= 0.4
+
+        var feedback: [String] = []
+        feedback.append("Your gradient (R against l): \(format(studentGradient, places: 2)) \u{03A9}/m.")
+        feedback.append("\u{03C1} = gradient \u{00D7} A = \(formatScientific(studentResistivityOhmM)) \u{03A9}\u{00B7}m.")
+        feedback.append("Accepted range: \(formatScientific(apparatus.trueResistivityOhmM - tolerance))\u{2013}\(formatScientific(apparatus.trueResistivityOhmM + tolerance)) \u{03A9}\u{00B7}m.")
+        if abs(regression.intercept) > apparatus.resistancePerMetreOhm * 0.4 * 0.05 + 0.05 {
+            feedback.append("Your line's y-intercept isn't close to zero \u2014 in a real practical this points to contact resistance at the sliding contact or crocodile clips, not an error in your gradient.")
+        }
+        if !spreadCorrect {
+            feedback.append("Your lengths only span \(format(spread, places: 2)) m \u{2014} real mark schemes deduct for a cramped range. Spread trials across at least 0.4 m.")
+        }
+        if readings.count < 5 {
+            feedback.append("Real exams expect at least 5 lengths spread across the wire \u2014 try recording more trials next time.")
+        }
+
+        let correct = resistivityCorrect && spreadCorrect
+        let score: Int
+        if correct {
+            score = 100
+        } else if resistivityCorrect {
+            score = 75
+        } else {
+            score = 45
+        }
+
+        let outcome = LabRunResult(
+            correct: correct,
+            score: score,
+            feedback: feedback,
+            examTip: "Plot R (y) against l (x) \u2014 the gradient gives \u03C1/A directly, since R = \u03C1l/A. Use a large triangle on the best-fit line to read the gradient, then multiply by the given cross-sectional area A to find \u03C1. Don't use a single R/l ratio from one point."
+        )
+        result = outcome
+        recorder.record(experimentTitle: SimulationType.resistanceWire.label, result: outcome)
+    }
+
+    var studentDataset: GraphDataset {
+        let points = readings.compactMap { reading -> GraphPoint? in
+            guard let resistance = reading.derivedValue else { return nil }
+            return GraphPoint(x: reading.value, y: resistance)
+        }
+        return GraphDataset(type: .resistanceVsLength, seed: 0, points: points, expectedGradient: apparatus.resistancePerMetreOhm)
+    }
+
+    var currentTrueReadings: (currentA: Double, voltageV: Double) {
+        (apparatus.trueCurrentA, apparatus.trueVoltageV)
+    }
+
+    func newTask() {
+        var rng = SeededRandomNumberGenerator(seed: Int.random(in: 0...Int(Int32.max)))
+        apparatus = ResistanceWireLabState(seed: rng.nextInt(0, Int(Int32.max)))
+        readings = []
+        result = nil
+        ammeterInput = ""
+        voltmeterInput = ""
+    }
+
+    private func format(_ value: Double, places: Int) -> String { String(format: "%.\(places)f", value) }
+
+    private func formatScientific(_ value: Double) -> String {
+        String(format: "%.2f \u{00D7} 10\u{207B}\u{2076}", value * 1e6)
+    }
+}
+
+// MARK: - View
+
+struct ResistanceWireLabView: View {
+    let curriculum: Curriculum
+    @State private var viewModel: ResistanceWireExperimentViewModel
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case ammeter, voltmeter }
+
+    init(curriculum: Curriculum, repository: AttemptRepository) {
+        self.curriculum = curriculum
+        _viewModel = State(initialValue: ResistanceWireExperimentViewModel(
+            recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
+            seed: Int.random(in: 0...Int(Int32.max))
+        ))
+    }
+
+    var body: some View {
+        LabScaffoldView(
+            title: "Resistance Wire Lab",
+            instructionText: viewModel.instructionText,
+            apparatusHeight: 330,
+            readings: viewModel.readings,
+            result: viewModel.result,
+            apparatus: { apparatusArea },
+            controls: { controls }
+        )
+    }
+
+    private var apparatusArea: some View {
+        GeometryReader { geo in
+            let readings = viewModel.currentTrueReadings
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    DialGaugeView(label: "A", value: readings.currentA, maxValue: 1.0)
+                    DialGaugeView(label: "V", value: readings.voltageV, maxValue: 3.0)
+                }
+                .frame(height: 100)
+
+                TestWireView(
+                    testLengthM: Binding(
+                        get: { viewModel.testLengthM },
+                        set: { viewModel.testLengthM = $0 }
+                    ),
+                    wireLengthM: ResistanceWireLabState.wireLengthM
+                )
+                .frame(height: 150)
+            }
+            .padding(16)
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+    }
+
+    @ViewBuilder
+    private var controls: some View {
+        if viewModel.result == nil {
+            HStack {
+                TextField("Ammeter reading", text: $viewModel.ammeterInput)
+                    .keyboardType(.decimalPad)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($focusedField, equals: .ammeter)
+                Text("A").foregroundStyle(.secondary)
+            }
+            HStack {
+                TextField("Voltmeter reading", text: $viewModel.voltmeterInput)
+                    .keyboardType(.decimalPad)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($focusedField, equals: .voltmeter)
+                Text("V").foregroundStyle(.secondary)
+            }
+            Button("Record reading") {
+                focusedField = nil
+                viewModel.recordReading()
+            }
+            .buttonStyle(.borderedProminent)
+            .frame(maxWidth: .infinity)
+
+            if viewModel.canCalculate {
+                Button("Calculate resistivity \u{03C1}") { viewModel.calculateResult() }
+                    .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+
+        if viewModel.result != nil {
+            ScatterPlotCanvasView(dataset: viewModel.studentDataset, definition: GraphCoachType.resistanceVsLength.definition)
+                .frame(height: 200)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            Button("New task") { viewModel.newTask() }
+                .buttonStyle(.bordered)
+                .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+/// Simple analogue dial: an arc, a needle at the current value, and a
+/// label. (Mirrors `OhmsLawLabView`'s private `DialGaugeView` \u2014 each Lab
+/// file keeps its own copy by design.)
+private struct DialGaugeView: View {
+    let label: String
+    let value: Double
+    let maxValue: Double
+
+    var body: some View {
+        Canvas { context, size in
+            let center = CGPoint(x: size.width / 2, y: size.height * 0.85)
+            let radius = min(size.width, size.height) * 0.7
+
+            LabCanvasHelpers.drawProtractorArc(context: context, center: center, radius: radius, startDeg: 180, endDeg: 360)
+
+            let majorDivisions = 5
+            for i in 0...majorDivisions {
+                let divisionFraction = Double(i) / Double(majorDivisions)
+                let degrees = 180 + 180 * divisionFraction
+                let rad = degrees * .pi / 180
+                let labelPoint = CGPoint(
+                    x: center.x + (radius + 12) * cos(rad),
+                    y: center.y + (radius + 12) * sin(rad)
+                )
+                let labelValue = maxValue * divisionFraction
+                LabCanvasHelpers.drawLabel(
+                    context: context,
+                    text: String(format: labelValue.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.1f", labelValue),
+                    at: labelPoint, size: 9
+                )
+            }
+
+            let fraction = max(0, min(1, value / maxValue))
+            let angleDeg = 180 + 180 * fraction
+            let angleRad = angleDeg * .pi / 180
+            var needle = Path()
+            needle.move(to: center)
+            needle.addLine(to: CGPoint(x: center.x + radius * 0.85 * cos(angleRad), y: center.y + radius * 0.85 * sin(angleRad)))
+            context.stroke(needle, with: .color(.red), lineWidth: 2.5)
+            context.fill(Path(ellipseIn: CGRect(x: center.x - 3, y: center.y - 3, width: 6, height: 6)), with: .color(.primary))
+
+            LabCanvasHelpers.drawLabel(context: context, text: label, at: CGPoint(x: center.x, y: center.y + 18), size: 14, weight: .bold)
+        }
+        .accessibilityLabel("\(label) meter reading diagram")
+    }
+}
+
+/// Horizontal test wire with a draggable sliding contact, a driver-cell
+/// schematic feeding one fixed end, and a cm ruler beneath \u2014 the student's
+/// drag position directly sets `testLengthM`, the length of wire actually
+/// in the circuit between the two contacts. Same drag-math pattern as
+/// `PotentiometerLabView`'s jockey, repurposed here as the circuit-defining
+/// contact rather than a voltage tap-point.
+private struct TestWireView: View {
+    @Binding var testLengthM: Double
+    let wireLengthM: Double
+
+    var body: some View {
+        GeometryReader { geo in
+            let leftX: CGFloat = 40
+            let wireWidth = geo.size.width - leftX - 24
+            let wireY = geo.size.height * 0.34
+            let contactX = leftX + CGFloat(testLengthM / wireLengthM) * wireWidth
+
+            Canvas { context, _ in
+                // Driver-cell schematic feeding the fixed end at A.
+                let battX = leftX - 22
+                var battLong = Path()
+                battLong.move(to: CGPoint(x: battX, y: wireY - 13))
+                battLong.addLine(to: CGPoint(x: battX, y: wireY + 13))
+                context.stroke(battLong, with: .color(.primary), lineWidth: 3)
+                var battShort = Path()
+                battShort.move(to: CGPoint(x: battX - 7, y: wireY - 7))
+                battShort.addLine(to: CGPoint(x: battX - 7, y: wireY + 7))
+                context.stroke(battShort, with: .color(.primary), lineWidth: 1.5)
+                var battLead = Path()
+                battLead.move(to: CGPoint(x: battX - 7, y: wireY))
+                battLead.addLine(to: CGPoint(x: battX - 20, y: wireY))
+                context.stroke(battLead, with: .color(.primary), lineWidth: 1.5)
+
+                // Test wire (nichrome-coloured, only the A-to-contact
+                // segment is highlighted since that's the length in circuit).
+                var fullWire = Path()
+                fullWire.move(to: CGPoint(x: leftX, y: wireY))
+                fullWire.addLine(to: CGPoint(x: leftX + wireWidth, y: wireY))
+                context.stroke(fullWire, with: .color(Color(hex: "#8B9997").opacity(0.4)), lineWidth: 4)
+
+                var activeWire = Path()
+                activeWire.move(to: CGPoint(x: leftX, y: wireY))
+                activeWire.addLine(to: CGPoint(x: contactX, y: wireY))
+                context.stroke(activeWire, with: .color(Color(hex: "#C0392B")), lineWidth: 4)
+
+                LabCanvasHelpers.drawLabel(context: context, text: "A", at: CGPoint(x: leftX - 4, y: wireY - 18), size: 12, weight: .bold)
+                LabCanvasHelpers.drawLabel(context: context, text: "B", at: CGPoint(x: leftX + wireWidth + 4, y: wireY - 18), size: 12, weight: .bold)
+
+                LabCanvasHelpers.drawHorizontalRuler(
+                    context: context, originY: wireY + 10, leftX: leftX, widthPx: wireWidth,
+                    maxValue: wireLengthM * 100, minorStep: 5
+                )
+                var cm = 0
+                let totalCm = Int(wireLengthM * 100)
+                while cm <= totalCm {
+                    if cm % 20 == 0 {
+                        let x = leftX + CGFloat(Double(cm) / Double(totalCm)) * wireWidth
+                        LabCanvasHelpers.drawLabel(context: context, text: "\(cm)", at: CGPoint(x: x, y: wireY + 34), size: 9)
+                    }
+                    cm += 5
+                }
+                LabCanvasHelpers.drawLabel(context: context, text: "length in circuit / cm", at: CGPoint(x: leftX + wireWidth / 2, y: wireY + 52), size: 10, color: .secondary)
+
+                // Sliding contact: a vertical lead down to the wire with a knob on top.
+                var contactLead = Path()
+                contactLead.move(to: CGPoint(x: contactX, y: wireY - 28))
+                contactLead.addLine(to: CGPoint(x: contactX, y: wireY))
+                context.stroke(contactLead, with: .color(Color(hex: "#2E7D32")), lineWidth: 3)
+                context.fill(Path(ellipseIn: CGRect(x: contactX - 7, y: wireY - 36, width: 14, height: 14)), with: .color(Color(hex: "#2E7D32")))
+
+                LabCanvasHelpers.drawLabel(
+                    context: context, text: String(format: "l = %.2f m", testLengthM),
+                    at: CGPoint(x: leftX + wireWidth / 2, y: wireY - 44), size: 13, weight: .semibold
+                )
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        let clampedX = min(max(value.location.x, leftX), leftX + wireWidth)
+                        testLengthM = Double((clampedX - leftX) / wireWidth) * wireLengthM
+                    }
+            )
+        }
+    }
+}

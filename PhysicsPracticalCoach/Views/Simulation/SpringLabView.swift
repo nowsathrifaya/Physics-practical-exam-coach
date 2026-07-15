@@ -108,6 +108,7 @@ final class SpringExperimentViewModel {
             guard let x = reading.derivedValue else { return nil }
             return RegressionPoint(x: x, y: reading.value)
         }
+        guard points.count >= 2 else { return } // defensive: LinearRegression.fit requires >=2
         let regression = LinearRegression.fit(points)
         let studentK = regression.slope
         let tolerance = apparatus.trueK * 0.12

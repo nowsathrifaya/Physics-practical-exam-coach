@@ -117,6 +117,7 @@ final class PotentiometerExperimentViewModel {
             guard let voltage = reading.derivedValue else { return nil }
             return RegressionPoint(x: reading.value, y: voltage)
         }
+        guard points.count >= 2 else { return } // defensive: LinearRegression.fit requires >=2
         let regression = LinearRegression.fit(points)
         let studentGradient = regression.slope
         let trueGradient = apparatus.truePotentialGradientVPerM

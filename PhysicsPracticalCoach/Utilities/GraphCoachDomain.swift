@@ -40,6 +40,10 @@ struct GraphDatasetGenerator {
         case .reciprocalLensDistances:
             // 1/v vs 1/u for a converging lens: gradient ~ -1 (a check), y-intercept = 1/f.
             (start, step, trueGradient, intercept) = (0.02, 0.01, -1.0, 0.09 + rng.nextDouble(-0.02, 0.02))
+        case .resistanceVsLength:
+            // R vs l for a resistance wire: gradient = resistivity / cross-sectional area,
+            // typically 8-20 ohm/m for a thin nichrome-like test wire.
+            (start, step, trueGradient, intercept) = (0.10, 0.15, 12.0 + rng.nextDouble(-3.0, 3.0), 0.0)
         }
 
         var points: [GraphPoint] = []

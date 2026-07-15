@@ -12,9 +12,9 @@
 //  triangle tool, and focused practice modes. The original dataset
 //  generation and gradient-marking logic (`GraphDatasetGenerator`,
 //  `GraphGradientMarker`) is untouched and reused as-is for step 6/7, and
-//  `ScatterPlotCanvasView` is kept exactly as before since three other lab
-//  views (`OhmsLawLabView`, `PotentiometerLabView`, `SpringLabView`) render
-//  their own student datasets with it.
+//  `ScatterPlotCanvasView` is kept exactly as before since four other lab
+//  views (`OhmsLawLabView`, `PotentiometerLabView`, `SpringLabView`,
+//  `LensLabView`) render their own student datasets with it.
 //
 
 import SwiftUI
@@ -330,14 +330,27 @@ final class GraphCoachPracticeViewModel {
     var titleOK: Bool { !titleInput.trimmingCharacters(in: .whitespaces).isEmpty }
 
     /// Fraction of the student's plotted points that land within a small
-    /// tolerance of the real data point at the same index.
+    /// tolerance of *some* unmatched real data point — order-independent,
+    /// since a student tapping points in a different order than the
+    /// dataset's internal x-ascending order is not a plotting mistake.
     var plottingAccuracy: Double {
         guard !plottedPoints.isEmpty else { return 0 }
         let tolerance = max(axisMaxX, axisMaxY) * 0.05
-        let matches = zip(plottedPoints, dataset.points).filter { student, real in
-            hypot((student.x - real.x) / max(axisMaxX, 0.001), (student.y - real.y) / max(axisMaxY, 0.001)) * max(axisMaxX, axisMaxY) <= tolerance
-        }.count
+        var unmatched = dataset.points
+        var matches = 0
+        for student in plottedPoints {
+            guard let closestIndex = unmatched.indices.min(by: { a, b in
+                distance(student, unmatched[a]) < distance(student, unmatched[b])
+            }) else { break }
+            if distance(student, unmatched[closestIndex]) <= tolerance {
+                matches += 1
+                unmatched.remove(at: closestIndex)
+            }
+        }
         return Double(matches) / Double(dataset.points.count)
+    }
+    private func distance(_ a: GraphPoint, _ b: GraphPoint) -> Double {
+        hypot((a.x - b.x) / max(axisMaxX, 0.001), (a.y - b.y) / max(axisMaxY, 0.001)) * max(axisMaxX, axisMaxY)
     }
     var plottingOK: Bool { plottedPoints.count >= dataset.points.count && plottingAccuracy >= 0.7 }
 
@@ -737,12 +750,47 @@ private struct UnitsStepView: View {
 
 // MARK: - Step 4: Plot the data
 
+/// The raw (x, y) values the student is meant to plot. Without this, Step 4
+/// is a blank grid with no way to know where a point should go — this is
+/// the exam's results table, shown the same way it would sit on a real exam
+/// paper next to blank graph paper.
+private struct RawDataTableCard: View {
+    let definition: GraphCoachType.Definition
+    let points: [GraphPoint]
+
+    private func format(_ value: Double) -> String { String(format: "%.3g", value) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Your results table").font(.caption.weight(.bold)).foregroundStyle(.secondary)
+            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
+                GridRow {
+                    Text("\(definition.xLabel)\(definition.xUnit.isEmpty ? "" : " / \(definition.xUnit)")").font(.caption.weight(.semibold))
+                    Text("\(definition.yLabel)\(definition.yUnit.isEmpty ? "" : " / \(definition.yUnit)")").font(.caption.weight(.semibold))
+                }
+                Divider().gridCellColumns(2)
+                ForEach(points, id: \.self) { p in
+                    GridRow {
+                        Text(format(p.x)).font(.caption.monospacedDigit())
+                        Text(format(p.y)).font(.caption.monospacedDigit())
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
 private struct PlotStepView: View {
     let viewModel: GraphCoachPracticeViewModel
 
     var body: some View {
-        StepCard(title: "Plot the data", subtitle: "Tap anywhere on the grid to place a point. Drag a point to fine-tune it.") {
+        StepCard(title: "Plot the data", subtitle: "Use the results table below — tap the grid to place each point, drag to fine-tune.") {
             VStack(alignment: .leading, spacing: 10) {
+                RawDataTableCard(definition: viewModel.graphType.definition, points: viewModel.dataset.points)
+
                 InteractivePlotCanvas(
                     definition: viewModel.graphType.definition,
                     axisMaxX: viewModel.axisMaxX,
@@ -905,6 +953,8 @@ private struct BestFitStepView: View {
 
     var body: some View {
         StepCard(title: "Draw the best-fit line", subtitle: "Drag the two handles so the line balances the scatter — don't join every point.") {
+            RawDataTableCard(definition: viewModel.graphType.definition, points: viewModel.dataset.points)
+
             BestFitLineCanvas(
                 definition: viewModel.graphType.definition,
                 axisMaxX: viewModel.axisMaxX,

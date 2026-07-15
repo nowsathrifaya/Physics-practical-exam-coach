@@ -93,6 +93,7 @@ enum GraphCoachType: String, CaseIterable, Codable, Identifiable {
     case sinIVsSinR = "SIN_I_VS_SIN_R"
     case potentialGradient = "POTENTIAL_GRADIENT"
     case reciprocalLensDistances = "RECIPROCAL_LENS_DISTANCES"
+    case resistanceVsLength = "RESISTANCE_VS_LENGTH"
 
     var id: String { rawValue }
 
@@ -155,6 +156,13 @@ enum GraphCoachType: String, CaseIterable, Codable, Identifiable {
                 xLabel: "1/u", xUnit: "cm\u{207B}\u{00B9}",
                 yLabel: "1/v", yUnit: "cm\u{207B}\u{00B9}",
                 gradientMeaning: "Gradient should be about \u{2212}1 \u{2014} a check on your readings, not the answer. The y-intercept equals 1/f, so f = 1 \u{00F7} intercept."
+            )
+        case .resistanceVsLength:
+            return Definition(
+                label: "Resistance vs length (Resistance Wire)",
+                xLabel: "Length l", xUnit: "m",
+                yLabel: "Resistance R", yUnit: "\u{03A9}",
+                gradientMeaning: "Gradient gives resistivity \u{00F7} cross-sectional area (R = \u{03C1}l/A), so \u{03C1} = gradient \u{00D7} A."
             )
         }
     }
