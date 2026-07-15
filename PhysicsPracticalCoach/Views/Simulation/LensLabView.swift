@@ -57,8 +57,9 @@ final class LensLabState {
         let startFraction = rng.nextDouble(0, 1)
         let minLens = focalLengthCm + 6
         let maxLens: Double = 45
-        lensPositionCm = minLens + startFraction * (maxLens - minLens)
-        screenPositionCm = min(lensPositionCm + 20, Self.benchLengthCm - 2)
+        let lensPos = minLens + startFraction * (maxLens - minLens)
+        lensPositionCm = lensPos
+        screenPositionCm = min(lensPos + 20, Self.benchLengthCm - 2)
     }
 
     /// Object distance u — directly what the student set by dragging the lens.
