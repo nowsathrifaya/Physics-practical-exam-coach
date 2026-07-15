@@ -13,14 +13,14 @@
 //
 //  EXAM DESIGN: because the sliding contact changes both which length of
 //  wire is between the terminals AND the total circuit resistance, current
-//  genuinely changes with length with no separate rheostat needed \u2014 exactly
+//  genuinely changes with length with no separate rheostat needed — exactly
 //  how the real "Resistance of a Wire" circuit behaves. At each length the
 //  student reads the ammeter and voltmeter themselves (their own reading
 //  care is the only source of error, same convention as every dial in the
 //  app) and R = V/I is computed per trial. The final graph plots R (y)
-//  against l (x) \u2014 the exact axes `AceQuestionBank.resis_ace_01` asks
-//  students to interpret \u2014 with resistivity \u03C1 recovered from the given
-//  cross-sectional area A and the gradient (\u03C1 = gradient \u00D7 A), matching
+//  against l (x) — the exact axes `AceQuestionBank.resis_ace_01` asks
+//  students to interpret — with resistivity ρ recovered from the given
+//  cross-sectional area A and the gradient (ρ = gradient × A), matching
 //  that question's model answer precisely rather than approximating it.
 //
 
@@ -33,21 +33,21 @@ final class ResistanceWireLabState {
     static let wireLengthM: Double = 1.00
     private static let minTestLengthM: Double = 0.10
 
-    /// Hidden true resistivity of the test wire (\u03A9\u00B7m) \u2014 typical of a thin
+    /// Hidden true resistivity of the test wire (Ω·m) — typical of a thin
     /// nichrome-like wire used in this experiment.
     let trueResistivityOhmM: Double
-    /// Given cross-sectional area (mm\u00B2) \u2014 as if pre-measured with a
+    /// Given cross-sectional area (mm²) — as if pre-measured with a
     /// micrometer and quoted on the question paper, matching how a real
-    /// exam supplies A so students only need to find \u03C1 from the gradient.
+    /// exam supplies A so students only need to find ρ from the gradient.
     let crossSectionAreaMm2: Double
     /// Hidden driver EMF (V).
     private let emfV: Double
     /// Hidden fixed resistance from the cell's internal resistance, the
-    /// ammeter, and the leads (\u03A9) \u2014 there is no rheostat in this circuit;
+    /// ammeter, and the leads (Ω) — there is no rheostat in this circuit;
     /// changing the test length is what changes the current.
     private let fixedResistanceOhm: Double
 
-    /// Length of wire currently between the two circuit contacts (m) \u2014 the
+    /// Length of wire currently between the two circuit contacts (m) — the
     /// student's own choice, set by dragging the sliding contact.
     private(set) var testLengthM: Double
 
@@ -60,7 +60,7 @@ final class ResistanceWireLabState {
         testLengthM = rng.nextDouble(Self.minTestLengthM, Self.wireLengthM)
     }
 
-    /// True resistance per metre = \u03C1/A (\u03A9/m) \u2014 what the R-l graph's
+    /// True resistance per metre = ρ/A (Ω/m) — what the R-l graph's
     /// gradient should equal.
     var resistancePerMetreOhm: Double {
         trueResistivityOhmM / (crossSectionAreaMm2 * 1e-6)
@@ -68,7 +68,7 @@ final class ResistanceWireLabState {
 
     private var testResistanceOhm: Double { resistancePerMetreOhm * testLengthM }
 
-    /// True circuit current at the current test length (A) \u2014 never shown
+    /// True circuit current at the current test length (A) — never shown
     /// as text, only rendered as a needle position.
     var trueCurrentA: Double {
         emfV / (fixedResistanceOhm + testResistanceOhm)
@@ -155,13 +155,13 @@ final class ResistanceWireExperimentViewModel {
         feedback.append("\u{03C1} = gradient \u{00D7} A = \(formatScientific(studentResistivityOhmM)) \u{03A9}\u{00B7}m.")
         feedback.append("Accepted range: \(formatScientific(apparatus.trueResistivityOhmM - tolerance))\u{2013}\(formatScientific(apparatus.trueResistivityOhmM + tolerance)) \u{03A9}\u{00B7}m.")
         if abs(regression.intercept) > apparatus.resistancePerMetreOhm * 0.4 * 0.05 + 0.05 {
-            feedback.append("Your line's y-intercept isn't close to zero \u2014 in a real practical this points to contact resistance at the sliding contact or crocodile clips, not an error in your gradient.")
+            feedback.append("Your line's y-intercept isn't close to zero — in a real practical this points to contact resistance at the sliding contact or crocodile clips, not an error in your gradient.")
         }
         if !spreadCorrect {
             feedback.append("Your lengths only span \(format(spread, places: 2)) m \u{2014} real mark schemes deduct for a cramped range. Spread trials across at least 0.4 m.")
         }
         if readings.count < 5 {
-            feedback.append("Real exams expect at least 5 lengths spread across the wire \u2014 try recording more trials next time.")
+            feedback.append("Real exams expect at least 5 lengths spread across the wire — try recording more trials next time.")
         }
 
         let correct = resistivityCorrect && spreadCorrect
@@ -178,7 +178,7 @@ final class ResistanceWireExperimentViewModel {
             correct: correct,
             score: score,
             feedback: feedback,
-            examTip: "Plot R (y) against l (x) \u2014 the gradient gives \u03C1/A directly, since R = \u03C1l/A. Use a large triangle on the best-fit line to read the gradient, then multiply by the given cross-sectional area A to find \u03C1. Don't use a single R/l ratio from one point."
+            examTip: "Plot R (y) against l (x) — the gradient gives ρ/A directly, since R = ρl/A. Use a large triangle on the best-fit line to read the gradient, then multiply by the given cross-sectional area A to find ρ. Don't use a single R/l ratio from one point."
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.resistanceWire.label, result: outcome)
@@ -309,7 +309,7 @@ struct ResistanceWireLabView: View {
 }
 
 /// Simple analogue dial: an arc, a needle at the current value, and a
-/// label. (Mirrors `OhmsLawLabView`'s private `DialGaugeView` \u2014 each Lab
+/// label. (Mirrors `OhmsLawLabView`'s private `DialGaugeView` — each Lab
 /// file keeps its own copy by design.)
 private struct DialGaugeView: View {
     let label: String
@@ -356,7 +356,7 @@ private struct DialGaugeView: View {
 }
 
 /// Horizontal test wire with a draggable sliding contact, a driver-cell
-/// schematic feeding one fixed end, and a cm ruler beneath \u2014 the student's
+/// schematic feeding one fixed end, and a cm ruler beneath — the student's
 /// drag position directly sets `testLengthM`, the length of wire actually
 /// in the circuit between the two contacts. Same drag-math pattern as
 /// `PotentiometerLabView`'s jockey, repurposed here as the circuit-defining

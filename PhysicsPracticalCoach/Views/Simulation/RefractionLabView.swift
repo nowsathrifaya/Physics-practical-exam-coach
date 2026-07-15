@@ -54,7 +54,7 @@ final class RefractionLabState {
     }
 
     /// True angle of refraction for the current incidence angle, from
-    /// Snell's law sin i = n sin r. Never shown as a number \u2014 only as the
+    /// Snell's law sin i = n sin r. Never shown as a number — only as the
     /// ray drawn on the canvas; the student must read it off the
     /// protractor themselves, exactly like tracing a ray on paper.
     var trueRefractionDeg: Double {
@@ -68,12 +68,12 @@ final class RefractionLabState {
     }
 
     /// Locks in the chosen angle and reveals the refracted ray + protractor
-    /// \u2014 matches placing the exit pins and then measuring the trace.
+    /// — matches placing the exit pins and then measuring the trace.
     func lockIncidence() {
         phase = .readingRefraction
     }
 
-    /// Re-arms for another trial at a (potentially) new incidence angle \u2014
+    /// Re-arms for another trial at a (potentially) new incidence angle —
     /// matches a real practical: reposition the pins, then re-measure.
     func rearmForNextTrial() {
         phase = .settingIncidence
@@ -119,7 +119,7 @@ final class RefractionExperimentViewModel {
     }
 
     /// Student reads the refracted ray's angle off the protractor by eye and
-    /// types it in \u2014 their own reading care IS the measurement, exactly
+    /// types it in — their own reading care IS the measurement, exactly
     /// like using a real protractor on a traced ray path.
     func recordReading() {
         guard let studentR = Double(refractionReadingInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) else { return }
