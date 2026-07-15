@@ -201,33 +201,34 @@ private let generalFramework: [(title: String, tip: String)] = [
 struct AnsweringTechniquesListView: View {
     let curriculum: Curriculum
     private var apparatusTypes: [ApparatusType] { CurriculumProfiles.forCurriculum(curriculum).apparatus }
+    private var techniques: [AnsweringTechnique] {
+        apparatusTypes.compactMap { AnsweringTechniquesBank.technique(for: $0) }
+    }
 
     var body: some View {
         List {
             Section {
                 ForEach(generalFramework, id: \.title) { item in
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(item.title).font(.subheadline.weight(.semibold))
-                        Text(item.tip).font(.caption).foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(item.title).font(.headline)
+                        Text(item.tip).font(.subheadline).foregroundStyle(.secondary)
                     }
-                    .padding(.vertical, 3)
+                    .padding(.vertical, 5)
                 }
             } header: {
                 Text("The 4-step answering framework")
             }
 
             Section {
-                ForEach(apparatusTypes) { apparatus in
-                    if let technique = AnsweringTechniquesBank.technique(for: apparatus) {
-                        NavigationLink {
-                            AnsweringTechniqueDetailView(technique: technique)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(apparatus.label).font(.headline)
-                                Text(technique.precision).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                            }
-                            .padding(.vertical, 4)
+                ForEach(Array(techniques.enumerated()), id: \.element.id) { index, technique in
+                    NavigationLink {
+                        AnsweringTechniquesPagerView(techniques: techniques, startIndex: index * 2)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(technique.apparatus.label).font(.headline)
+                            Text(technique.precision).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
                         }
+                        .padding(.vertical, 5)
                     }
                 }
             } header: {
@@ -238,59 +239,114 @@ struct AnsweringTechniquesListView: View {
     }
 }
 
-struct AnsweringTechniqueDetailView: View {
+/// A technique's content is split into two swipeable pages — the reading
+/// technique, then errors & the exam-answer phrasing — so nothing on
+/// screen needs a small font or a long scroll to fit.
+private enum TechniquePagePart {
+    case reading, answering
+}
+
+struct AnsweringTechniquesPagerView: View {
+    let techniques: [AnsweringTechnique]
+    let startIndex: Int
+    @Environment(\.dismiss) private var dismiss
+
+    private var pages: [(technique: AnsweringTechnique, part: TechniquePagePart)] {
+        techniques.flatMap { [($0, .reading), ($0, .answering)] }
+    }
+
+    var body: some View {
+        PagedReaderView(
+            pageCount: pages.count,
+            initialIndex: startIndex,
+            pageLabel: { i in
+                let entry = pages[i]
+                let partLabel = entry.part == .reading ? "How to Read" : "Errors & Answer"
+                return "\(entry.technique.apparatus.label) \u{2014} \(partLabel)"
+            },
+            page: { i in
+                let entry = pages[i]
+                switch entry.part {
+                case .reading:
+                    ReadingTechniquePage(technique: entry.technique)
+                case .answering:
+                    AnsweringExamPage(technique: entry.technique)
+                }
+            },
+            onFinished: { dismiss() },
+            finishedLabel: "Done"
+        )
+        .navigationTitle("Answering Techniques")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct ReadingTechniquePage: View {
     let technique: AnsweringTechnique
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(technique.apparatus.label).font(.title2.bold())
-                    Label(technique.precision, systemImage: "ruler")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.blue)
-                }
+        VStack(alignment: .leading, spacing: 18) {
+            Text(technique.apparatus.label).font(.title2.bold())
+            Label(technique.precision, systemImage: "ruler")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.blue)
 
-                block(title: "How to take the reading", tint: .blue) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(Array(technique.howToRead.enumerated()), id: \.offset) { index, step in
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text("\(index + 1).").font(.subheadline.weight(.bold)).foregroundStyle(.blue)
-                                Text(step).font(.subheadline)
-                            }
+            block(title: "How to take the reading", tint: .blue) {
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(Array(technique.howToRead.enumerated()), id: \.offset) { index, step in
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text("\(index + 1).").font(.title3.weight(.bold)).foregroundStyle(.blue)
+                            Text(step).font(.title3)
                         }
                     }
-                }
-
-                block(title: "Common errors & how to fix them", tint: .red) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(technique.errors) { item in
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("\u{2717} \(item.error)").font(.subheadline.weight(.semibold)).foregroundStyle(.red)
-                                Text(item.fix).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-
-                block(title: "How to write the answer", tint: .green) {
-                    Text(technique.howToAnswer).font(.subheadline)
                 }
             }
-            .padding(20)
         }
-        .background(Color(.systemGroupedBackground))
-        .navigationTitle(technique.apparatus.label)
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     @ViewBuilder
     private func block<Content: View>(title: String, tint: Color, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(title).font(.headline).foregroundStyle(tint)
             content()
         }
-        .padding(16)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+private struct AnsweringExamPage: View {
+    let technique: AnsweringTechnique
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text(technique.apparatus.label).font(.title2.bold())
+
+            block(title: "Common errors & how to fix them", tint: .red) {
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(technique.errors) { item in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\u{2717} \(item.error)").font(.title3.weight(.semibold)).foregroundStyle(.red)
+                            Text(item.fix).font(.body).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+
+            block(title: "How to write the answer", tint: .green) {
+                Text(technique.howToAnswer).font(.title3)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func block<Content: View>(title: String, tint: Color, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title).font(.headline).foregroundStyle(tint)
+            content()
+        }
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }

@@ -102,57 +102,101 @@ enum LastMinuteRevisionBank {
 }
 
 struct LastMinuteRevisionView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private let formulas = LastMinuteRevisionBank.formulas
+    private let noteChunks = LastMinuteRevisionBank.highYieldNotes.chunked(into: 3)
+
+    private var totalPages: Int { formulas.count + noteChunks.count }
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Formula Sheet").font(.title3.bold())
-                    Text("Every governing equation used across the practical syllabus.")
-                        .font(.caption).foregroundStyle(.secondary)
+        PagedReaderView(
+            pageCount: totalPages,
+            pageLabel: { i in
+                if i < formulas.count {
+                    return "Formula \(i + 1) of \(formulas.count)"
+                } else {
+                    let chunkIndex = i - formulas.count
+                    return "High-Yield Rules \(chunkIndex + 1) of \(noteChunks.count)"
                 }
-
-                ForEach(LastMinuteRevisionBank.formulas) { item in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(item.topic).font(.subheadline.weight(.semibold))
-                        Text(item.formula)
-                            .font(.title3.weight(.bold).monospaced())
-                            .foregroundStyle(.blue)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(item.variables).font(.caption).foregroundStyle(.secondary)
-                        Text(item.notes).font(.footnote)
-                    }
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            },
+            page: { i in
+                if i < formulas.count {
+                    FormulaPage(item: formulas[i])
+                } else {
+                    HighYieldPage(notes: noteChunks[i - formulas.count])
                 }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("High-Yield Rules").font(.title3.bold()).padding(.top, 8)
-                    Text("The rules that cost the most marks when forgotten.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(Array(LastMinuteRevisionBank.highYieldNotes.enumerated()), id: \.offset) { index, note in
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            Image(systemName: "star.fill")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                            Text(note).font(.subheadline)
-                        }
-                        if index < LastMinuteRevisionBank.highYieldNotes.count - 1 {
-                            Divider()
-                        }
-                    }
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            .padding(20)
-        }
-        .background(Color(.systemGroupedBackground))
+            },
+            onFinished: { dismiss() },
+            finishedLabel: "Done"
+        )
         .navigationTitle("Last Minute Revision")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct FormulaPage: View {
+    let item: RevisionFormula
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("FORMULA SHEET")
+                .font(.caption.weight(.bold))
+                .tracking(0.8)
+                .foregroundStyle(.secondary)
+
+            Text(item.topic).font(.title2.bold())
+
+            Text(item.formula)
+                .font(.title.weight(.bold).monospaced())
+                .foregroundStyle(.blue)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 4)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Variables").font(.headline).foregroundStyle(.secondary)
+                Text(item.variables).font(.title3)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Notes").font(.headline).foregroundStyle(.secondary)
+                Text(item.notes).font(.title3)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+private struct HighYieldPage: View {
+    let notes: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("HIGH-YIELD RULES")
+                .font(.caption.weight(.bold))
+                .tracking(0.8)
+                .foregroundStyle(.secondary)
+            Text("The rules that cost the most marks when forgotten.")
+                .font(.title3.weight(.semibold))
+
+            VStack(alignment: .leading, spacing: 18) {
+                ForEach(Array(notes.enumerated()), id: \.offset) { index, note in
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Image(systemName: "star.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(.orange)
+                        Text(note).font(.title3)
+                    }
+                    if index < notes.count - 1 {
+                        Divider()
+                    }
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
     }
 }

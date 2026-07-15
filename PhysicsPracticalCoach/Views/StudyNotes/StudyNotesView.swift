@@ -416,31 +416,49 @@ struct StudyNotesListView: View {
 struct StudyNoteCategoryDetailView: View {
     let category: StudyNoteCategory
     let curriculum: Curriculum
+    @Environment(\.dismiss) private var dismiss
+
+    private var notes: [StudyNote] { StudyNotesBank.forCategory(category, curriculum: curriculum) }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                ForEach(StudyNotesBank.forCategory(category, curriculum: curriculum)) { note in
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(note.title).font(.title3.bold())
-                        Text(note.rule).font(.body)
-                        NoteBlock(label: "Examples", text: note.examples, tint: .blue)
-                        if !note.doNotDo.isEmpty {
-                            NoteBlock(label: "Don't do this", text: note.doNotDo, tint: .red)
-                        }
-                        if !note.tip.isEmpty {
-                            NoteBlock(label: "Tip", text: note.tip, tint: .teal)
-                        }
-                    }
-                    .padding(16)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
+        Group {
+            if notes.isEmpty {
+                ContentUnavailableView("No notes here yet", systemImage: "book")
+            } else {
+                PagedReaderView(
+                    pageCount: notes.count,
+                    pageLabel: { "Note \($0 + 1) of \(notes.count)" },
+                    page: { i in StudyNoteCardPage(note: notes[i]) },
+                    onFinished: { dismiss() },
+                    finishedLabel: "Done"
+                )
             }
-            .padding(20)
         }
-        .background(Color(.systemGroupedBackground))
         .navigationTitle(category.label)
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct StudyNoteCardPage: View {
+    let note: StudyNote
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text(note.title).font(.title2.bold())
+            Text(note.rule)
+                .font(.title3)
+                .fixedSize(horizontal: false, vertical: true)
+            NoteBlock(label: "Examples", text: note.examples, tint: .blue)
+            if !note.doNotDo.isEmpty {
+                NoteBlock(label: "Don't do this", text: note.doNotDo, tint: .red)
+            }
+            if !note.tip.isEmpty {
+                NoteBlock(label: "Tip", text: note.tip, tint: .teal)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -450,9 +468,9 @@ private struct NoteBlock: View {
     let tint: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(.caption.weight(.semibold)).foregroundStyle(tint)
-            Text(text).font(.footnote)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).font(.headline).foregroundStyle(tint)
+            Text(text).font(.body)
         }
     }
 }
