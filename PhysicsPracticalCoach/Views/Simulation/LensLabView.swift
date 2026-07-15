@@ -48,14 +48,14 @@ final class LensLabState {
     private(set) var lensPositionCm: Double
     private(set) var screenPositionCm: Double
 
-    private var minLensCm: Double { focalLengthCm + 6 }
+    private var minLensCm: Double { focalLengthCm + 3 }
     private var maxLensCm: Double { 45 }
 
     init(seed: Int) {
         var rng = SeededRandomNumberGenerator(seed: seed)
         focalLengthCm = ((rng.nextDouble(8, 16)) * 2).rounded() / 2 // nearest 0.5 cm
         let startFraction = rng.nextDouble(0, 1)
-        let minLens = focalLengthCm + 6
+        let minLens = focalLengthCm + 6 // start comfortably placed; the near edge (f+3) is still reachable by dragging
         let maxLens: Double = 45
         let lensPos = minLens + startFraction * (maxLens - minLens)
         lensPositionCm = lensPos
@@ -66,14 +66,19 @@ final class LensLabState {
     var objectDistanceCm: Double { lensPositionCm - objectPositionCm }
 
     /// True image distance v for the current lens position, from the thin
-    /// lens formula 1/f = 1/u + 1/v (guaranteed real, since u > f is
-    /// enforced by the drag clamp below).
+    /// lens formula 1/f = 1/u + 1/v (only meaningful when `hasUsableImage`).
     var trueImageDistanceCm: Double {
         let u = objectDistanceCm
         return (focalLengthCm * u) / (u - focalLengthCm)
     }
 
     var trueScreenPositionCm: Double { lensPositionCm + trueImageDistanceCm }
+
+    /// If the lens sits too close to the object (u only just greater than f),
+    /// the image forms far beyond the end of a real optical bench and can
+    /// never be caught on the screen — a genuine exam concept (choosing u
+    /// well clear of f), not just a rendering limit.
+    var hasUsableImage: Bool { trueScreenPositionCm <= Self.benchLengthCm - 2 }
 
     /// How far the student's screen currently is from the true sharp-focus
     /// position — drives the blur radius drawn on the image, never shown
@@ -115,6 +120,7 @@ final class LensExperimentViewModel {
     private static let minRecommendedTrials = 5
     private static let focalLengthToleranceFraction = 0.15
     private static let gradientTolerance = 0.25 // around the expected -1
+    private static let minURangeCm = 12.0 // real mark schemes deduct for a cramped spread of u
 
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
@@ -124,6 +130,9 @@ final class LensExperimentViewModel {
     var instructionText: String {
         switch apparatus.phase {
         case .positioningLens:
+            if !apparatus.hasUsableImage {
+                return "u is too close to f here — the image would form beyond the end of the bench. Drag the lens further from the object."
+            }
             return "Drag the lens to set a new object distance u, different from your other trials."
         case .focusingScreen:
             return "Drag the screen until the image is as sharp as possible — check it blurs again on both sides (the bracket method), then confirm."
@@ -131,11 +140,16 @@ final class LensExperimentViewModel {
     }
 
     var sharpnessHint: (text: String, color: Color) {
+        guard apparatus.hasUsableImage else {
+            return ("No image can be caught on this bench — u is too close to f. Go back and move the lens further away.", .red)
+        }
         let blur = apparatus.blurDistanceCm
         if blur < 1.0 { return ("Sharp focus!", .green) }
         if blur < 4.0 { return ("Getting close — keep adjusting.", .orange) }
         return ("Blurred — slide the screen to search for the sharp point.", .secondary)
     }
+
+    var canConfirmFocus: Bool { apparatus.hasUsableImage }
 
     func confirmLensPosition() {
         apparatus.startFocusing()
@@ -145,6 +159,7 @@ final class LensExperimentViewModel {
     /// judgement of sharpness IS the measurement, exactly like using a real
     /// screen and metre rule in the exam hall.
     func confirmFocus() {
+        guard apparatus.hasUsableImage else { return } // no real image to catch; button is disabled for this too
         let u = apparatus.objectDistanceCm
         let v = apparatus.screenPositionCm - apparatus.lensPositionCm
         readings.append(LabReading(
@@ -173,6 +188,10 @@ final class LensExperimentViewModel {
         let fCorrect = studentF.isFinite && abs(studentF - apparatus.focalLengthCm) <= tolerance
         let gradientCorrect = abs(regression.slope - (-1)) <= Self.gradientTolerance
 
+        let uValues = readings.map(\.value)
+        let uSpread = (uValues.max() ?? 0) - (uValues.min() ?? 0)
+        let spreadCorrect = uSpread >= Self.minURangeCm
+
         var feedback: [String] = []
         if studentF.isFinite {
             feedback.append("Your focal length from the graph (f = 1 ÷ y-intercept): \(format(studentF)) cm.")
@@ -184,14 +203,19 @@ final class LensExperimentViewModel {
         if !gradientCorrect {
             feedback.append("A gradient far from −1 usually means one or more (u, v) pairs weren't actually at sharp focus — re-check those trials.")
         }
+        if !spreadCorrect {
+            feedback.append("Your object distances only span \(format(uSpread)) cm — real mark schemes deduct for a cramped range. Spread trials across at least \(Int(Self.minURangeCm)) cm of the bench, not clustered close together.")
+        }
         if readings.count < Self.minRecommendedTrials {
             feedback.append("Real exams expect at least \(Self.minRecommendedTrials) trials at different object distances, spread across the bench — try recording more.")
         }
 
-        let correct = fCorrect
+        let correct = fCorrect && spreadCorrect
         let score: Int
         if correct {
             score = 100
+        } else if fCorrect {
+            score = 75 // right physics, just too clustered a range to trust in a real exam
         } else if gradientCorrect {
             score = 60 // readings were internally consistent, just off from the true f
         } else {
@@ -302,6 +326,12 @@ struct LensLabView: View {
                     context: context, text: String(format: "u = %.1f cm", lab.objectDistanceCm),
                     at: CGPoint(x: lensX, y: benchY - 58), size: 12, weight: .semibold
                 )
+                if lab.phase == .positioningLens && !lab.hasUsableImage {
+                    LabCanvasHelpers.drawLabel(
+                        context: context, text: "image forms beyond the bench →",
+                        at: CGPoint(x: lensX, y: benchY + 58), size: 10, weight: .semibold, color: .red
+                    )
+                }
 
                 // Screen: a small rectangle, only meaningfully positioned once focusing has begun.
                 let screenX = x(lab.screenPositionCm)
@@ -355,6 +385,7 @@ struct LensLabView: View {
             Button("Confirm lens position — focus the screen") { viewModel.confirmLensPosition() }
                 .buttonStyle(.borderedProminent)
                 .frame(maxWidth: .infinity)
+                .disabled(!viewModel.canConfirmFocus)
         case .focusingScreen:
             VStack(alignment: .leading, spacing: 8) {
                 Text(viewModel.sharpnessHint.text)
@@ -363,6 +394,7 @@ struct LensLabView: View {
                 Button("Confirm sharp focus — record trial") { viewModel.confirmFocus() }
                     .buttonStyle(.borderedProminent)
                     .frame(maxWidth: .infinity)
+                    .disabled(!viewModel.canConfirmFocus)
             }
         }
 
