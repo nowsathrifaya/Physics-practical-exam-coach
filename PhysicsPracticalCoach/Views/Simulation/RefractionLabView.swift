@@ -24,6 +24,16 @@
 //  plotted as sin i vs sin r — the exact axes `refrac_ace_02` asks
 //  students to interpret — with n taken directly as the gradient.
 //
+//  Diagram fidelity pass: labelled point of incidence O, curved angle
+//  indicator arcs for i and r (not just numeric labels), a two-tier
+//  protractor scale (5° medium ticks, 10° labelled major ticks — true 1°
+//  ticks aren't legible at phone-screen protractor radii, so a "zoom in to
+//  read" toggle stands in for finer on-screen resolution instead), a
+//  non-blocking plausibility warning on implausible readings, a specific
+//  "measured from the surface, not the normal" diagnostic derived from
+//  Snell's law rather than guessed, and a setup-phase nudge toward a wider
+//  spread of trial angles.
+//
 
 import SwiftUI
 
@@ -63,6 +73,15 @@ final class RefractionLabState {
         return rRad * 180 / .pi
     }
 
+    /// True angle of refraction for an arbitrary already-locked incidence
+    /// angle (used post-hoc in grading to diagnose a specific past trial,
+    /// without needing to have stored the true reading at record time).
+    func trueRefractionDeg(forIncidenceDeg incidenceDeg: Double) -> Double {
+        let iRad = incidenceDeg * .pi / 180
+        let rRad = asin(sin(iRad) / refractiveIndex)
+        return rRad * 180 / .pi
+    }
+
     func setIncidenceFromDrag(rawAngleDeg: Double) {
         angleOfIncidenceDeg = min(max(rawAngleDeg, Self.minIncidenceDeg), Self.maxIncidenceDeg)
     }
@@ -92,9 +111,18 @@ final class RefractionExperimentViewModel {
     private(set) var result: LabRunResult?
     var refractionReadingInput: String = ""
 
-    private static let minRecommendedTrials = 5
+    /// Non-blocking plausibility warning shown after recording a trial —
+    /// students can still record an implausible reading (that's the whole
+    /// point of letting real mistakes happen), they just aren't left
+    /// thinking it was silently accepted as correct.
+    private(set) var lastReadingWarning: String?
+
+    static let minRecommendedTrials = 5
     private static let refractiveIndexToleranceFraction = 0.12
     private static let minIncidenceSpreadDeg = 30.0
+    /// How close a previous trial's angle can be before we nudge the
+    /// student toward a wider spread during setup.
+    private static let tooCloseToleranceDeg = 8.0
 
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
@@ -110,6 +138,18 @@ final class RefractionExperimentViewModel {
         }
     }
 
+    /// Shown only during setup, only once there's at least one previous
+    /// trial to compare against — encourages a wide spread of angles
+    /// before the student locks one in, rather than only scolding them
+    /// about it afterwards in the final feedback.
+    var setupSpreadHint: String? {
+        guard !readings.isEmpty else { return nil }
+        let previousAngles = readings.map(\.value)
+        let closest = previousAngles.min { abs($0 - apparatus.angleOfIncidenceDeg) < abs($1 - apparatus.angleOfIncidenceDeg) } ?? 0
+        guard abs(closest - apparatus.angleOfIncidenceDeg) < Self.tooCloseToleranceDeg else { return nil }
+        return "Previous angles: \(previousAngles.map { "\(Int($0.rounded()))\u{00B0}" }.joined(separator: ", ")). Try a noticeably different angle for a better spread."
+    }
+
     func setIncidence(rawAngleDeg: Double) {
         apparatus.setIncidenceFromDrag(rawAngleDeg: rawAngleDeg)
     }
@@ -120,9 +160,20 @@ final class RefractionExperimentViewModel {
 
     /// Student reads the refracted ray's angle off the protractor by eye and
     /// types it in — their own reading care IS the measurement, exactly
-    /// like using a real protractor on a traced ray path.
+    /// like using a real protractor on a traced ray path. Physically
+    /// implausible entries (r <= 0, or r >= i, which can never happen when
+    /// light enters a denser medium) are still recorded, just flagged —
+    /// this check needs no knowledge of the hidden refractive index, so it
+    /// can't leak the answer.
     func recordReading() {
         guard let studentR = Double(refractionReadingInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) else { return }
+
+        if studentR <= 0 || studentR >= apparatus.angleOfIncidenceDeg {
+            lastReadingWarning = "Check your protractor reading \u{2014} the angle of refraction should be smaller than the angle of incidence and greater than 0\u{00B0}. Remember to measure from the normal, not the surface."
+        } else {
+            lastReadingWarning = nil
+        }
+
         readings.append(LabReading(
             trialNumber: readings.count + 1,
             label: "Angle of incidence i", value: (apparatus.angleOfIncidenceDeg * 10).rounded() / 10, unit: "\u{00B0}",
@@ -161,6 +212,21 @@ final class RefractionExperimentViewModel {
         if !nCorrect {
             feedback.append("A gradient far from the accepted range usually means one or more angles of refraction were misread \u{2014} check your protractor readings.")
         }
+
+        // Diagnose "measured from the surface, not the normal" precisely:
+        // since Snell's law fully determines the true r for each locked i,
+        // we can check whether a specific trial's typed reading is much
+        // closer to (90 - true r) than to the true r itself, without ever
+        // revealing the hidden refractive index n.
+        for reading in readings {
+            guard let typedR = reading.derivedValue else { continue }
+            let trueR = apparatus.trueRefractionDeg(forIncidenceDeg: reading.value)
+            let surfaceReadingPattern = 90 - trueR
+            if abs(typedR - surfaceReadingPattern) <= 3, abs(typedR - trueR) > 8 {
+                feedback.append("Trial \(reading.trialNumber): this reading looks like it may have been measured from the glass surface instead of the normal \u{2014} worth rechecking.")
+            }
+        }
+
         if !spreadCorrect {
             feedback.append("Your angles of incidence only span \(format(spread))\u{00B0} \u{2014} real mark schemes deduct for a cramped range. Spread trials across at least \(Int(Self.minIncidenceSpreadDeg))\u{00B0}.")
         }
@@ -204,6 +270,7 @@ final class RefractionExperimentViewModel {
         readings = []
         result = nil
         refractionReadingInput = ""
+        lastReadingWarning = nil
     }
 
     private func format(_ value: Double) -> String { String(format: "%.2f", value) }
@@ -215,6 +282,7 @@ struct RefractionLabView: View {
     let curriculum: Curriculum
     @State private var viewModel: RefractionExperimentViewModel
     @FocusState private var readingFieldFocused: Bool
+    @State private var isZoomed = false
 
     init(curriculum: Curriculum, repository: AttemptRepository) {
         self.curriculum = curriculum
@@ -228,7 +296,7 @@ struct RefractionLabView: View {
         LabScaffoldView(
             title: "Refraction Lab",
             instructionText: viewModel.instructionText,
-            apparatusHeight: 320,
+            apparatusHeight: isZoomed ? 460 : 320,
             readings: viewModel.readings,
             result: viewModel.result,
             apparatus: { apparatusArea },
@@ -238,22 +306,37 @@ struct RefractionLabView: View {
 
     private var apparatusArea: some View {
         GeometryReader { geo in
+            let zoom: CGFloat = isZoomed ? 1.45 : 1.0
             let originPoint = CGPoint(x: geo.size.width / 2, y: geo.size.height * 0.42)
-            let incidentRayLength = min(geo.size.width, geo.size.height) * 0.36
-            let refractedRayLength = min(geo.size.width, geo.size.height) * 0.42
-            let protractorRadius = min(geo.size.width, geo.size.height) * 0.3
+            let incidentRayLength = min(geo.size.width, geo.size.height) * 0.36 * zoom
+            let refractedRayLength = min(geo.size.width, geo.size.height) * 0.42 * zoom
+            let protractorRadius = min(geo.size.width, geo.size.height) * 0.3 * zoom
             let lab = viewModel.apparatus
 
             Canvas { context, size in
-                // Glass block: shaded region below the surface line.
+                // Glass block: light-blue, semi-transparent, with a subtle
+                // top highlight and border so it reads as glass rather than
+                // a flat filled rectangle.
                 let blockRect = CGRect(x: 0, y: originPoint.y, width: size.width, height: size.height - originPoint.y)
-                context.fill(Path(blockRect), with: .color(Color(hex: "#0F5A4F").opacity(0.12)))
+                context.fill(
+                    Path(blockRect),
+                    with: .linearGradient(
+                        Gradient(colors: [Color(hex: "#BFE3F2").opacity(0.38), Color(hex: "#8FCBE8").opacity(0.20)]),
+                        startPoint: CGPoint(x: 0, y: originPoint.y),
+                        endPoint: CGPoint(x: 0, y: size.height)
+                    )
+                )
+                var highlight = Path()
+                highlight.move(to: CGPoint(x: 0, y: originPoint.y + 3))
+                highlight.addLine(to: CGPoint(x: size.width, y: originPoint.y + 3))
+                context.stroke(highlight, with: .color(.white.opacity(0.5)), lineWidth: 1.5)
 
                 var surface = Path()
                 surface.move(to: CGPoint(x: 0, y: originPoint.y))
                 surface.addLine(to: CGPoint(x: size.width, y: originPoint.y))
                 context.stroke(surface, with: .color(Color(hex: "#5B6B69")), lineWidth: 2)
-                LabCanvasHelpers.drawLabel(context: context, text: "Glass block", at: CGPoint(x: size.width - 44, y: originPoint.y + 18), size: 10, color: .secondary)
+                LabCanvasHelpers.drawLabel(context: context, text: "Air", at: CGPoint(x: size.width - 30, y: originPoint.y - 16), size: 10, color: .secondary)
+                LabCanvasHelpers.drawLabel(context: context, text: "Glass", at: CGPoint(x: size.width - 34, y: originPoint.y + 18), size: 10, color: .secondary)
 
                 // Normal: dashed vertical line through the point of incidence O.
                 var normal = Path()
@@ -276,6 +359,14 @@ struct RefractionLabView: View {
                     context: context, text: String(format: "i = %.0f\u{00B0}", lab.angleOfIncidenceDeg),
                     at: CGPoint(x: pointA.x + 20, y: pointA.y - 4), size: 11, weight: .semibold
                 )
+                // Curved angle-indicator arc between the normal and the
+                // incident ray — shows *which* angle i refers to, not just
+                // its numeric label, matching a real textbook ray diagram.
+                LabCanvasHelpers.drawAngleIndicatorArc(
+                    context: context, center: originPoint, radius: 26 * zoom,
+                    startDeg: 270, endDeg: 270 + lab.angleOfIncidenceDeg,
+                    color: Color(hex: "#C0392B"), label: "i"
+                )
 
                 if lab.phase == .settingIncidence {
                     LabCanvasHelpers.drawWeight(context: context, center: pointA, radiusPx: 9, color: Color(hex: "#C0392B"))
@@ -294,25 +385,38 @@ struct RefractionLabView: View {
                     refractedRay.addLine(to: pointB)
                     context.stroke(refractedRay, with: .color(Color(hex: "#2E7D32")), lineWidth: 3)
 
+                    LabCanvasHelpers.drawAngleIndicatorArc(
+                        context: context, center: originPoint, radius: 22 * zoom,
+                        startDeg: 90 - lab.trueRefractionDeg, endDeg: 90,
+                        color: Color(hex: "#2E7D32"), label: "r"
+                    )
+
                     LabCanvasHelpers.drawProtractorArc(
                         context: context, center: originPoint, radius: protractorRadius,
-                        startDeg: 190, endDeg: 350, color: Color(hex: "#8B9997")
+                        startDeg: 190, endDeg: 350, color: Color(hex: "#8B9997"),
+                        minorTickStepDeg: 5
                     )
 
                     var deg = 190.0
                     while deg <= 350 {
-                        if Int(deg) % 20 == 0 {
+                        if Int(deg) % 10 == 0 {
                             let rad = deg * .pi / 180
                             let labelPoint = CGPoint(
                                 x: originPoint.x + (protractorRadius + 15) * CGFloat(cos(rad)),
                                 y: originPoint.y + (protractorRadius + 15) * CGFloat(sin(rad))
                             )
                             let valueFromNormal = Int(abs(deg - 270).rounded())
-                            LabCanvasHelpers.drawLabel(context: context, text: "\(valueFromNormal)\u{00B0}", at: labelPoint, size: 9, color: .secondary)
+                            LabCanvasHelpers.drawLabel(context: context, text: "\(valueFromNormal)\u{00B0}", at: labelPoint, size: 8 * zoom, color: .secondary)
                         }
-                        deg += 10
+                        deg += 5
                     }
                 }
+
+                // Point of incidence O, drawn last so it sits on top of the
+                // rays where they meet — exactly how a real exam diagram
+                // marks it.
+                LabCanvasHelpers.drawWeight(context: context, center: originPoint, radiusPx: 3.5, color: .primary)
+                LabCanvasHelpers.drawLabel(context: context, text: "O", at: CGPoint(x: originPoint.x - 14, y: originPoint.y + 12), size: 12, weight: .bold)
             }
             .contentShape(Rectangle())
             .highPriorityGesture(
@@ -331,19 +435,43 @@ struct RefractionLabView: View {
 
     @ViewBuilder
     private var controls: some View {
+        if viewModel.result == nil {
+            TrialProgressView(completed: viewModel.readings.count, target: RefractionExperimentViewModel.minRecommendedTrials)
+        }
+
         switch viewModel.apparatus.phase {
         case .settingIncidence:
+            if let hint = viewModel.setupSpreadHint {
+                Text(hint)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
             Button("Confirm angle \u{2014} trace the refracted ray") { viewModel.confirmIncidence() }
                 .buttonStyle(.borderedProminent)
                 .frame(maxWidth: .infinity)
         case .readingRefraction:
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
+                    Text("\u{2713} Measure from the normal, not the surface.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(isZoomed ? "\u{1F50D} Zoom out" : "\u{1F50D} Zoom in to read") {
+                        withAnimation { isZoomed.toggle() }
+                    }
+                    .font(.caption)
+                }
+                HStack {
                     TextField("Angle of refraction r", text: $viewModel.refractionReadingInput)
                         .keyboardType(.decimalPad)
                         .textFieldStyle(.roundedBorder)
                         .focused($readingFieldFocused)
                     Text("\u{00B0}").foregroundStyle(.secondary)
+                }
+                if let warning = viewModel.lastReadingWarning {
+                    Text(warning)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
                 }
                 Button("Record trial") {
                     readingFieldFocused = false
@@ -369,5 +497,28 @@ struct RefractionLabView: View {
                 .buttonStyle(.bordered)
                 .frame(maxWidth: .infinity)
         }
+    }
+}
+
+/// Small "Trial 1 ✓ Trial 2 ✓ ... Trial 5" checklist so the student always
+/// knows how many readings are left before the recommended minimum, rather
+/// than only finding out from the readings table or the final feedback.
+private struct TrialProgressView: View {
+    let completed: Int
+    let target: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(1...target, id: \.self) { trial in
+                HStack(spacing: 3) {
+                    Image(systemName: trial <= completed ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(trial <= completed ? Color(hex: "#2E7D32") : .secondary)
+                    Text("\(trial)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .font(.caption)
     }
 }

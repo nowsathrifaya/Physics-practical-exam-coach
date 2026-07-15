@@ -11,11 +11,12 @@
 //
 //  Built on the Lab framework so far: Pendulum, Hooke's Law (Spring),
 //  Ohm's Law, Density by Displacement, Moments, Potentiometer, Lens,
-//  Refraction, and Resistance Wire — see `LAB_FRAMEWORK.md` for the
-//  architecture and the full experiment-by-experiment status. The
-//  remaining curriculum simulations use `GenericSimulationView`, a working
-//  slider-driven placeholder with the correct physics formula and
-//  description already wired up, pending conversion to the Lab pattern.
+//  Refraction, Resistance Wire, Vernier Caliper, and Cooling Curve — see
+//  `LAB_FRAMEWORK.md` for the architecture and the full
+//  experiment-by-experiment status. The remaining curriculum simulations
+//  use `GenericSimulationView`, a working slider-driven placeholder with
+//  the correct physics formula and description already wired up, pending
+//  conversion to the Lab pattern.
 //
 
 import SwiftUI
@@ -26,7 +27,7 @@ struct SimulationListView: View {
 
     /// Experiment types that have a full Lab-framework build. Anything not
     /// in this set still routes to the generic slider shell.
-    private static let labBuiltTypes: Set<SimulationType> = [.pendulum, .springExtension, .ohmsLaw, .densityDisplacement, .moments, .potentiometer, .lensFocusing, .refraction, .resistanceWire]
+    private static let labBuiltTypes: Set<SimulationType> = [.pendulum, .springExtension, .ohmsLaw, .densityDisplacement, .moments, .potentiometer, .lensFocusing, .refraction, .resistanceWire, .vernierCaliper, .coolingCurve]
 
     var body: some View {
         List(profile.simulations) { type in
@@ -87,6 +88,10 @@ struct SimulationDestinationView: View {
             RefractionLabView(curriculum: curriculum, repository: repository)
         case .resistanceWire:
             ResistanceWireLabView(curriculum: curriculum, repository: repository)
+        case .vernierCaliper:
+            VernierCaliperLabView(curriculum: curriculum, repository: repository)
+        case .coolingCurve:
+            CoolingCurveLabView(curriculum: curriculum, repository: repository)
         default:
             GenericSimulationView(type: type)
         }

@@ -80,14 +80,18 @@ enum LabCanvasHelpers {
 
     /// Draws a protractor-style arc with degree tick marks every 10 degrees,
     /// used for any experiment measuring an angle (pendulum release angle,
-    /// refraction angle of incidence, moments' beam tilt).
+    /// refraction angle of incidence, moments' beam tilt). Pass
+    /// `minorTickStepDeg` to add shorter intermediate ticks (e.g. every 5
+    /// degrees) for finer by-eye reading \u2014 existing callers are unaffected
+    /// since it defaults to `nil` (10-degree ticks only).
     static func drawProtractorArc(
         context: GraphicsContext,
         center: CGPoint,
         radius: CGFloat,
         startDeg: Double = -90,
         endDeg: Double = 90,
-        color: Color = Color(hex: "#8B9997")
+        color: Color = Color(hex: "#8B9997"),
+        minorTickStepDeg: Double? = nil
     ) {
         var arc = Path()
         arc.addArc(
@@ -107,6 +111,55 @@ enum LabCanvasHelpers {
             tick.addLine(to: outer)
             context.stroke(tick, with: .color(color), lineWidth: 1)
             deg += 10
+        }
+
+        if let minorStep = minorTickStepDeg, minorStep > 0, minorStep < 10 {
+            var minorDeg = startDeg
+            while minorDeg <= endDeg {
+                if Int((minorDeg - startDeg).rounded()) % 10 != 0 {
+                    let rad = minorDeg * .pi / 180
+                    let inner = CGPoint(x: center.x + (radius - 4) * cos(rad), y: center.y + (radius - 4) * sin(rad))
+                    let outer = CGPoint(x: center.x + radius * cos(rad), y: center.y + radius * sin(rad))
+                    var tick = Path()
+                    tick.move(to: inner)
+                    tick.addLine(to: outer)
+                    context.stroke(tick, with: .color(color.opacity(0.7)), lineWidth: 0.75)
+                }
+                minorDeg += minorStep
+            }
+        }
+    }
+
+    /// Draws a small curved arc between two directions from a shared vertex
+    /// \u2014 the "which angle am I measuring" indicator used next to a
+    /// protractor reading, exactly like the curved angle mark in a textbook
+    /// ray diagram. Distinct from `drawProtractorArc`: no tick marks, no
+    /// degree scale, just the arc itself plus an optional short label at its
+    /// midpoint.
+    static func drawAngleIndicatorArc(
+        context: GraphicsContext,
+        center: CGPoint,
+        radius: CGFloat,
+        startDeg: Double,
+        endDeg: Double,
+        color: Color = .primary,
+        label: String? = nil,
+        labelSize: CGFloat = 12
+    ) {
+        var arc = Path()
+        arc.addArc(
+            center: center, radius: radius,
+            startAngle: .degrees(startDeg), endAngle: .degrees(endDeg),
+            clockwise: false
+        )
+        context.stroke(arc, with: .color(color), lineWidth: 1.5)
+
+        if let label {
+            let midDeg = (startDeg + endDeg) / 2
+            let midRad = midDeg * .pi / 180
+            let labelRadius = radius + 13
+            let point = CGPoint(x: center.x + labelRadius * cos(midRad), y: center.y + labelRadius * sin(midRad))
+            drawLabel(context: context, text: label, at: point, size: labelSize, weight: .semibold, color: color)
         }
     }
 
