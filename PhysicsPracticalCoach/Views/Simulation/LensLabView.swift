@@ -259,7 +259,7 @@ struct LensLabView: View {
             let pxPerCm = benchWidthPx / LensLabState.benchLengthCm
             let lab = viewModel.apparatus
 
-            func x(_ cm: Double) -> CGFloat { leftX + CGFloat(cm) * pxPerCm }
+            let x: (Double) -> CGFloat = { cm in leftX + CGFloat(cm) * pxPerCm }
 
             Canvas { context, _ in
                 var bench = Path()
