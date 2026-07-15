@@ -5,26 +5,26 @@
 //  Converging Lens lab experiment, built on the Lab framework (see
 //  `PendulumLabView.swift` for the reference template and
 //  `LAB_FRAMEWORK.md` for the architecture). Sixth distinct drag mechanic:
-//  a two-stage drag per trial along one shared optical-bench axis \u2014 first
+//  a two-stage drag per trial along one shared optical-bench axis — first
 //  the lens (sets the object distance u), then the screen (finds the
-//  sharply focused image, exactly like a real bracket-method search) \u2014
+//  sharply focused image, exactly like a real bracket-method search) —
 //  reusing Ohm's Law/Potentiometer's one-axis drag math but applied twice
 //  per trial instead of once.
 //
-//  EXAM DESIGN: mirrors a real WAEC/NECO/IGCSE lens practical \u2014 a lamp
+//  EXAM DESIGN: mirrors a real WAEC/NECO/IGCSE lens practical — a lamp
 //  and object pin sit at a fixed position, a converging lens of unknown
 //  focal length is moved to set u, and the student slides a screen back
 //  and forth until the image is "as sharp as possible" (see
 //  `AceQuestionBank.lens_ace_01`: sharpness of the image edges is the
 //  focus criterion, not size, and the image blurs on both sides of the
-//  true position \u2014 the bracket method). That blur is genuinely simulated
+//  true position — the bracket method). That blur is genuinely simulated
 //  here (rendered with a real Gaussian blur whose radius grows with
 //  distance from the true image position), so the student's own care in
 //  finding the sharp point is the actual source of measurement error,
 //  never faked or shortcut. At least 5 trials at different u are expected,
-//  then the student's own u/v readings are plotted as 1/v vs 1/u \u2014 the
+//  then the student's own u/v readings are plotted as 1/v vs 1/u — the
 //  exact rearrangement `AceQuestionBank.lens_pdo_01` asks students to
-//  derive \u2014 with f found from the reciprocal of the y-intercept.
+//  derive — with f found from the reciprocal of the y-intercept.
 //
 
 import SwiftUI
@@ -61,7 +61,7 @@ final class LensLabState {
         screenPositionCm = min(lensPositionCm + 20, Self.benchLengthCm - 2)
     }
 
-    /// Object distance u \u2014 directly what the student set by dragging the lens.
+    /// Object distance u — directly what the student set by dragging the lens.
     var objectDistanceCm: Double { lensPositionCm - objectPositionCm }
 
     /// True image distance v for the current lens position, from the thin
@@ -75,7 +75,7 @@ final class LensLabState {
     var trueScreenPositionCm: Double { lensPositionCm + trueImageDistanceCm }
 
     /// How far the student's screen currently is from the true sharp-focus
-    /// position \u2014 drives the blur radius drawn on the image, never shown
+    /// position — drives the blur radius drawn on the image, never shown
     /// as a number, exactly like a real bracket-method search.
     var blurDistanceCm: Double { abs(screenPositionCm - trueScreenPositionCm) }
 
@@ -92,7 +92,7 @@ final class LensLabState {
         phase = .focusingScreen
     }
 
-    /// Re-arms for another trial at a (potentially) new lens position \u2014
+    /// Re-arms for another trial at a (potentially) new lens position —
     /// matches a real practical: reposition the lens, then re-search for
     /// focus, exactly as Pendulum re-arms for another timing trial.
     func rearmForNextTrial() {
@@ -125,22 +125,22 @@ final class LensExperimentViewModel {
         case .positioningLens:
             return "Drag the lens to set a new object distance u, different from your other trials."
         case .focusingScreen:
-            return "Drag the screen until the image is as sharp as possible \u2014 check it blurs again on both sides (the bracket method), then confirm."
+            return "Drag the screen until the image is as sharp as possible — check it blurs again on both sides (the bracket method), then confirm."
         }
     }
 
     var sharpnessHint: (text: String, color: Color) {
         let blur = apparatus.blurDistanceCm
         if blur < 1.0 { return ("Sharp focus!", .green) }
-        if blur < 4.0 { return ("Getting close \u2014 keep adjusting.", .orange) }
-        return ("Blurred \u2014 slide the screen to search for the sharp point.", .secondary)
+        if blur < 4.0 { return ("Getting close — keep adjusting.", .orange) }
+        return ("Blurred — slide the screen to search for the sharp point.", .secondary)
     }
 
     func confirmLensPosition() {
         apparatus.startFocusing()
     }
 
-    /// Student taps this the instant the image looks sharpest \u2014 their own
+    /// Student taps this the instant the image looks sharpest — their own
     /// judgement of sharpness IS the measurement, exactly like using a real
     /// screen and metre rule in the exam hall.
     func confirmFocus() {
@@ -158,7 +158,7 @@ final class LensExperimentViewModel {
 
     func calculateResult() {
         guard canCalculate else { return }
-        // 1/v (y) vs 1/u (x) -> gradient \u2248 -1 (a check), y-intercept = 1/f.
+        // 1/v (y) vs 1/u (x) -> gradient ≈ -1 (a check), y-intercept = 1/f.
         let points = readings.compactMap { reading -> RegressionPoint? in
             guard let v = reading.derivedValue, reading.value > 0, v > 0 else { return nil }
             return RegressionPoint(x: 1 / reading.value, y: 1 / v)
@@ -174,17 +174,17 @@ final class LensExperimentViewModel {
 
         var feedback: [String] = []
         if studentF.isFinite {
-            feedback.append("Your focal length from the graph (f = 1 \u00F7 y-intercept): \(format(studentF)) cm.")
+            feedback.append("Your focal length from the graph (f = 1 ÷ y-intercept): \(format(studentF)) cm.")
         } else {
-            feedback.append("Your line's y-intercept wasn't usable to find f \u2014 check your 1/u and 1/v values are calculated correctly.")
+            feedback.append("Your line's y-intercept wasn't usable to find f — check your 1/u and 1/v values are calculated correctly.")
         }
         feedback.append("Accepted range: \(format(apparatus.focalLengthCm - tolerance))\u{2013}\(format(apparatus.focalLengthCm + tolerance)) cm.")
-        feedback.append("Your line's gradient: \(format(regression.slope)) (expected \u2248 \u22121 \u2014 this is a check on your readings, not the answer).")
+        feedback.append("Your line's gradient: \(format(regression.slope)) (expected ≈ −1 — this is a check on your readings, not the answer).")
         if !gradientCorrect {
-            feedback.append("A gradient far from \u22121 usually means one or more (u, v) pairs weren't actually at sharp focus \u2014 re-check those trials.")
+            feedback.append("A gradient far from −1 usually means one or more (u, v) pairs weren't actually at sharp focus — re-check those trials.")
         }
         if readings.count < Self.minRecommendedTrials {
-            feedback.append("Real exams expect at least \(Self.minRecommendedTrials) trials at different object distances, spread across the bench \u2014 try recording more.")
+            feedback.append("Real exams expect at least \(Self.minRecommendedTrials) trials at different object distances, spread across the bench — try recording more.")
         }
 
         let correct = fCorrect
@@ -201,7 +201,7 @@ final class LensExperimentViewModel {
             correct: correct,
             score: score,
             feedback: feedback,
-            examTip: "Plot 1/v (y) against 1/u (x) \u2014 the gradient should come out close to \u22121 as a check, and the y-intercept equals 1/f, so f = 1 \u00F7 intercept. Judge focus by sharpness of the image edges, not by its size \u2014 bracket the sharp point by moving the screen past it in both directions."
+            examTip: "Plot 1/v (y) against 1/u (x) — the gradient should come out close to −1 as a check, and the y-intercept equals 1/f, so f = 1 ÷ intercept. Judge focus by sharpness of the image edges, not by its size — bracket the sharp point by moving the screen past it in both directions."
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.lensFocusing.label, result: outcome)
@@ -314,7 +314,7 @@ struct LensLabView: View {
                 }
 
                 // Image: an inverted arrow at the TRUE image position, blurred by
-                // how far the student's screen currently is from that position \u2014
+                // how far the student's screen currently is from that position —
                 // a real bracket-method visual, not a faked hint.
                 if lab.phase == .focusingScreen {
                     let imgX = x(lab.trueScreenPositionCm)
@@ -351,7 +351,7 @@ struct LensLabView: View {
     private var controls: some View {
         switch viewModel.apparatus.phase {
         case .positioningLens:
-            Button("Confirm lens position \u2014 focus the screen") { viewModel.confirmLensPosition() }
+            Button("Confirm lens position — focus the screen") { viewModel.confirmLensPosition() }
                 .buttonStyle(.borderedProminent)
                 .frame(maxWidth: .infinity)
         case .focusingScreen:
@@ -359,7 +359,7 @@ struct LensLabView: View {
                 Text(viewModel.sharpnessHint.text)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(viewModel.sharpnessHint.color)
-                Button("Confirm sharp focus \u2014 record trial") { viewModel.confirmFocus() }
+                Button("Confirm sharp focus — record trial") { viewModel.confirmFocus() }
                     .buttonStyle(.borderedProminent)
                     .frame(maxWidth: .infinity)
             }
