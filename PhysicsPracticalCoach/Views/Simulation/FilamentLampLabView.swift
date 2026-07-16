@@ -166,11 +166,11 @@ final class FilamentLampExperimentViewModel {
         feedback.append("R at your highest current (\(format(maxReading.value)) A): about \(format(expectedRHigh)) \u{03A9}.")
         feedback.append("Your ratio: \(format(studentRatio)). Accepted range: \(format(expectedRatio - ratioTolerance))\u{2013}\(format(expectedRatio + ratioTolerance)).")
         if readings.count < 5 {
-            feedback.append("Real exams expect at least 5 rheostat settings spread across the full range \u2014 try recording more trials next time.")
+            feedback.append("Real exams expect at least 5 rheostat settings spread across the full range \u{2014} try recording more trials next time.")
         }
         let spreadA = maxReading.value - minReading.value
         if spreadA < 0.15 {
-            feedback.append("Your readings were bunched close together in current \u2014 spread the rheostat setting more widely to see the resistance change clearly.")
+            feedback.append("Your readings were bunched close together in current \u{2014} spread the rheostat setting more widely to see the resistance change clearly.")
         }
 
         let correct = ratioCorrect && majorityReadingsCorrect
@@ -178,7 +178,7 @@ final class FilamentLampExperimentViewModel {
             correct: correct,
             score: correct ? 100 : (ratioCorrect ? 70 : 40),
             feedback: feedback,
-            examTip: "R = V/I increases as the filament heats up and glows brighter, so the I-V graph curves away from a straight line through the origin \u2014 that curvature IS the evidence the lamp is non-ohmic. Calculate R separately at a low current and a high current to show it changes; an ohmic conductor would give the same R throughout."
+            examTip: "R = V/I increases as the filament heats up and glows brighter, so the I-V graph curves away from a straight line through the origin \u{2014} that curvature IS the evidence the lamp is non-ohmic. Calculate R separately at a low current and a high current to show it changes; an ohmic conductor would give the same R throughout."
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.filamentLamp.label, result: outcome)
