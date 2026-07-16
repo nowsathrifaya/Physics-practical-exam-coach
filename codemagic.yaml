@@ -1,0 +1,87 @@
+workflows:
+  ios-release:
+    name: Physics Practical Coach - iOS Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Physics Practical Exam Coach
+    environment:
+      groups:
+        - app_store_credentials   # create this group in Codemagic UI (see notes below)
+      vars:
+        XCODE_PROJECT: "PhysicsPracticalCoach.xcodeproj"
+        XCODE_SCHEME: "PhysicsPracticalCoach"
+        BUNDLE_ID: "com.physicscoach.app"
+        APP_STORE_APPLE_ID: "6789596496"
+      xcode: latest
+      cocoapods: default
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+
+    scripts:
+      - name: Generate Xcode project with XcodeGen
+        script: |
+          brew install xcodegen
+          cd $CM_BUILD_DIR
+          xcodegen generate
+
+      - name: Set up code signing (automatic, via App Store Connect API key)
+        script: |
+          cd $CM_BUILD_DIR
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Increment build number
+        script: |
+          cd $CM_BUILD_DIR
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          if [ -z "$LATEST_BUILD_NUMBER" ]; then
+            LATEST_BUILD_NUMBER=0
+          fi
+          NEW_BUILD_NUMBER=$(($LATEST_BUILD_NUMBER + 1))
+          echo "Latest known build number (TestFlight/App Store): $LATEST_BUILD_NUMBER"
+          echo "Setting CURRENT_PROJECT_VERSION to: $NEW_BUILD_NUMBER"
+          agvtool new-version -all $NEW_BUILD_NUMBER
+          echo "Confirmed CURRENT_PROJECT_VERSION is now:"
+          agvtool what-version
+
+      - name: Build .ipa for App Store distribution
+        script: |
+          cd $CM_BUILD_DIR
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+      - name: DEBUG - dump actual compiled Info.plist from the built ipa
+        script: |
+          cd $CM_BUILD_DIR
+          IPA_PATH=$(find build/ios/ipa -name "*.ipa" | head -1)
+          echo "Inspecting: $IPA_PATH"
+          rm -rf /tmp/ipa_inspect
+          mkdir -p /tmp/ipa_inspect
+          unzip -q "$IPA_PATH" -d /tmp/ipa_inspect
+          APP_PATH=$(find /tmp/ipa_inspect/Payload -maxdepth 1 -name "*.app" | head -1)
+          echo "App bundle: $APP_PATH"
+          echo "----- Full compiled Info.plist -----"
+          plutil -p "$APP_PATH/Info.plist"
+          echo "----- End of Info.plist -----"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # Flip to true once you're ready to submit builds straight to review
+        submit_to_app_store: false
