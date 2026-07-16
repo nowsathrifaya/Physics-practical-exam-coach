@@ -82,7 +82,7 @@ enum LabCanvasHelpers {
     /// used for any experiment measuring an angle (pendulum release angle,
     /// refraction angle of incidence, moments' beam tilt). Pass
     /// `minorTickStepDeg` to add shorter intermediate ticks (e.g. every 5
-    /// degrees) for finer by-eye reading \u{2014} existing callers are unaffected
+    /// degrees) for finer by-eye reading — existing callers are unaffected
     /// since it defaults to `nil` (10-degree ticks only).
     static func drawProtractorArc(
         context: GraphicsContext,
@@ -131,7 +131,7 @@ enum LabCanvasHelpers {
     }
 
     /// Draws a small curved arc between two directions from a shared vertex
-    /// \u{2014} the "which angle am I measuring" indicator used next to a
+    /// — the "which angle am I measuring" indicator used next to a
     /// protractor reading, exactly like the curved angle mark in a textbook
     /// ray diagram. Distinct from `drawProtractorArc`: no tick marks, no
     /// degree scale, just the arc itself plus an optional short label at its

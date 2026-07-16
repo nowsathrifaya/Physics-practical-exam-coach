@@ -499,26 +499,3 @@ struct RefractionLabView: View {
         }
     }
 }
-
-/// Small "Trial 1 ✓ Trial 2 ✓ ... Trial 5" checklist so the student always
-/// knows how many readings are left before the recommended minimum, rather
-/// than only finding out from the readings table or the final feedback.
-private struct TrialProgressView: View {
-    let completed: Int
-    let target: Int
-
-    var body: some View {
-        HStack(spacing: 6) {
-            ForEach(1...target, id: \.self) { trial in
-                HStack(spacing: 3) {
-                    Image(systemName: trial <= completed ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(trial <= completed ? Color(hex: "#2E7D32") : .secondary)
-                    Text("\(trial)")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .font(.caption)
-    }
-}

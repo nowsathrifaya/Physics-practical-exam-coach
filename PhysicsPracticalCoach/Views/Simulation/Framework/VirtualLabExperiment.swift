@@ -38,7 +38,7 @@ struct LabApparatusItem: Identifiable, Hashable {
     /// Shown once correctly placed, describing the assembly action for
     /// Stage 3 (e.g. "Attach the string to the clamp.").
     let setUpInstruction: String
-    /// Shown in the info sheet (\u{2139}\u{fe0f} button on each apparatus card) —
+    /// Shown in the info sheet (\u2139\ufe0f button on each apparatus card) —
     /// revision-style facts about the instrument itself. Defaulted to empty
     /// so existing call sites compile unchanged; experiments can fill these
     /// in for genuine measuring instruments (rulers, stopwatches) where

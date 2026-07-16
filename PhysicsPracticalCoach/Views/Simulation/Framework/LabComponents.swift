@@ -156,6 +156,32 @@ struct LabDataTableView: View {
     }
 }
 
+/// Small "Trial 1 ✓ Trial 2 ✓ ... Trial 5" checklist so the student always
+/// knows how many readings are left before the recommended minimum, rather
+/// than only finding out from the readings table or the final feedback.
+/// Shared across labs (first used by Refraction, now Resistance Wire too)
+/// since it's generic trial-tracking UI, not lab-specific physics — unlike
+/// each lab's own `DialGaugeView` copy, which stays lab-local by design.
+struct TrialProgressView: View {
+    let completed: Int
+    let target: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(1...target, id: \.self) { trial in
+                HStack(spacing: 3) {
+                    Image(systemName: trial <= completed ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(trial <= completed ? Color(hex: "#2E7D32") : .secondary)
+                    Text("\(trial)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .font(.caption)
+    }
+}
+
 /// Pass/fail feedback card — visually identical to the cards used in
 /// Apparatus and Graph Coach practice, so grading always looks the same
 /// regardless of which mode produced it.

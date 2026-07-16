@@ -238,7 +238,7 @@ struct AcePracticeSessionView: View {
     }
 }
 
-/// Renders the box (1-5) as filled/empty squares, e.g. \u{25A0}\u{25A0}\u{25A1}\u{25A1}\u{25A1}, matching
+/// Renders the box (1-5) as filled/empty squares, e.g. \u25A0\u25A0\u25A1\u25A1\u25A1, matching
 /// the Android Leitner progress indicator.
 private struct LeitnerBoxIndicator: View {
     let box: Int
