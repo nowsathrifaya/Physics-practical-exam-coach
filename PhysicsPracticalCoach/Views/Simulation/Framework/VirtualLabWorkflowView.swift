@@ -332,6 +332,10 @@ private struct CollectApparatusStageView: View {
     @State private var isChecking = false
     @State private var checkPassed = false
     @State private var isDraggingCard = false
+    /// Tap-to-place alternative to dragging: tap a shelf item to select it,
+    /// then tap the workbench to place it. Avoids requiring a precise drag
+    /// gesture for students who find dragging difficult.
+    @State private var selectedItem: LabApparatusItem?
 
     /// Local named coordinate space shared by the shelf cards and the
     /// workbench drop target. Using a local space (rather than `.global`)
@@ -354,7 +358,7 @@ private struct CollectApparatusStageView: View {
                 LabCoachAvatar(size: 44)
                 WhiteboardCard(
                     eyebrow: "Step \(LabExperimentStage.collectApparatus.rawValue + 1)",
-                    text: "Pick up apparatus from the shelf and carry it to its spot on the workbench."
+                    text: "Drag apparatus from the shelf onto the workbench — or tap an item, then tap the workbench to place it."
                 )
             }
 
@@ -420,8 +424,14 @@ private struct CollectApparatusStageView: View {
                         ShelfApparatusCard(
                             item: item,
                             isPlaced: viewModel.placedApparatus.contains(item.id),
+                            isSelected: selectedItem?.id == item.id,
                             onDragStateChange: { dragging in isDraggingCard = dragging },
-                            onDrop: { dropPoint in handleDrop(of: item, at: dropPoint) }
+                            onDrop: { dropPoint in handleDrop(of: item, at: dropPoint) },
+                            onTap: {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                    selectedItem = (selectedItem?.id == item.id) ? nil : item
+                                }
+                            }
                         )
                     }
                 }
@@ -451,7 +461,17 @@ private struct CollectApparatusStageView: View {
                         .position(x: geo.size.width * slot.point.x, y: geo.size.height * slot.point.y)
                 }
 
-                if viewModel.placedApparatus.isEmpty {
+                if let selected = selectedItem {
+                    Text("Tap here to place \(selected.name)")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.accentColor.opacity(0.55), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .padding(.horizontal, 24)
+                        .transition(.opacity)
+                } else if viewModel.placedApparatus.isEmpty {
                     Text("Drag apparatus from the shelf onto the workbench.")
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(.white)
@@ -463,6 +483,12 @@ private struct CollectApparatusStageView: View {
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard let item = selectedItem else { return }
+                viewModel.placeApparatus(item, isCorrectDrop: true)
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) { selectedItem = nil }
+            }
             .background(
                 Color.clear
                     .onAppear { benchFrame = geo.frame(in: .named(Self.workspaceSpace)) }
@@ -471,7 +497,7 @@ private struct CollectApparatusStageView: View {
         }
         .frame(height: 260)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(WorkbenchGlow(isActive: viewModel.placedApparatus.isEmpty))
+        .overlay(WorkbenchGlow(isActive: viewModel.placedApparatus.isEmpty || selectedItem != nil))
         .shadow(color: .black.opacity(0.18), radius: 10, x: 0, y: 6)
     }
 
@@ -619,8 +645,10 @@ private struct WorkbenchGlow: View {
 private struct ShelfApparatusCard: View {
     let item: LabApparatusItem
     let isPlaced: Bool
+    let isSelected: Bool
     let onDragStateChange: (Bool) -> Void
     let onDrop: (CGPoint) -> Void
+    let onTap: () -> Void
 
     @State private var dragTranslation: CGSize = .zero
     @State private var isDragging = false
@@ -653,6 +681,10 @@ private struct ShelfApparatusCard: View {
         .frame(width: 92)
         .padding(10)
         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.accentColor, lineWidth: isSelected ? 3 : 0)
+        )
         .opacity(isPlaced ? 0.35 : 1)
         // Captured on the card's static, pre-drag layout (before scale/offset
         // are applied below) so this frame never needs to be recomputed as
@@ -705,6 +737,10 @@ private struct ShelfApparatusCard: View {
                     }
                 }
         )
+        .onTapGesture {
+            guard !isPlaced else { return }
+            onTap()
+        }
         .allowsHitTesting(!isPlaced)
         .popover(isPresented: $showingInfo) {
             ApparatusInfoView(item: item)

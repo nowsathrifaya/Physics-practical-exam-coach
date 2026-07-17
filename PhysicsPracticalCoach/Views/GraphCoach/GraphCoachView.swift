@@ -43,6 +43,15 @@ func formatGridTick(_ value: Double) -> String {
 /// Draws real-graph-paper-style axes: light minor gridlines at every step,
 /// darker major gridlines every `majorEvery` steps, and numbered tick
 /// labels along both axes at each major line (e.g. 0, 2, 4, 6, 8, 10).
+/// Picks how many minor gridlines separate each numbered tick, so that a
+/// grid always gets a readable number of labels (~4-6) instead of a fixed
+/// stride that can leave most of the axis unlabeled on grids with few
+/// columns/rows (e.g. only "0" and "0.1" showing across an 8-column grid).
+private func labelStride(forCount count: Int, targetLabels: Int = 5) -> Int {
+    guard count > 0 else { return 1 }
+    return max(1, Int((Double(count) / Double(targetLabels)).rounded()))
+}
+
 func drawGraphPaper(
     context: GraphicsContext,
     plotRect: CGRect,
@@ -50,11 +59,13 @@ func drawGraphPaper(
     maxY: Double,
     stepX: Double,
     stepY: Double,
-    majorEvery: Int = 5
+    majorEvery: Int? = nil
 ) {
     guard stepX > 0, stepY > 0, maxX > 0, maxY > 0 else { return }
     let columns = max(1, Int((maxX / stepX).rounded()))
     let rows = max(1, Int((maxY / stepY).rounded()))
+    let columnLabelEvery = majorEvery ?? labelStride(forCount: columns)
+    let rowLabelEvery = majorEvery ?? labelStride(forCount: rows)
 
     var minor = Path()
     var major = Path()
@@ -64,7 +75,7 @@ func drawGraphPaper(
         var line = Path()
         line.move(to: CGPoint(x: x, y: plotRect.minY))
         line.addLine(to: CGPoint(x: x, y: plotRect.maxY))
-        if c % majorEvery == 0 { major.addPath(line) } else { minor.addPath(line) }
+        if c % columnLabelEvery == 0 { major.addPath(line) } else { minor.addPath(line) }
     }
     for r in 0...rows {
         // r = 0 at the bottom (the origin), increasing upward — matches
@@ -73,20 +84,20 @@ func drawGraphPaper(
         var line = Path()
         line.move(to: CGPoint(x: plotRect.minX, y: y))
         line.addLine(to: CGPoint(x: plotRect.maxX, y: y))
-        if r % majorEvery == 0 { major.addPath(line) } else { minor.addPath(line) }
+        if r % rowLabelEvery == 0 { major.addPath(line) } else { minor.addPath(line) }
     }
 
     context.stroke(minor, with: .color(.secondary.opacity(0.15)), lineWidth: 0.5)
     context.stroke(major, with: .color(.secondary.opacity(0.45)), lineWidth: 1)
 
-    for c in stride(from: 0, through: columns, by: majorEvery) {
+    for c in stride(from: 0, through: columns, by: columnLabelEvery) {
         let x = plotRect.minX + plotRect.width * CGFloat(c) / CGFloat(columns)
         context.draw(
             Text(formatGridTick(Double(c) * stepX)).font(.system(size: 9)).foregroundStyle(.secondary),
             at: CGPoint(x: x, y: plotRect.maxY + 11)
         )
     }
-    for r in stride(from: 0, through: rows, by: majorEvery) {
+    for r in stride(from: 0, through: rows, by: rowLabelEvery) {
         let y = plotRect.maxY - plotRect.height * CGFloat(r) / CGFloat(rows)
         context.draw(
             Text(formatGridTick(Double(r) * stepY)).font(.system(size: 9)).foregroundStyle(.secondary),
@@ -380,8 +391,38 @@ final class GraphCoachPracticeViewModel {
     var isFirstStep: Bool { stepIndex == 0 }
     var isLastStep: Bool { stepIndex == steps.count - 1 }
 
+    /// Whether the *current* step's own requirement is satisfied — used to
+    /// gate the Next button so a student can't skip ahead (e.g. leaving the
+    /// axis label blank, or plotting zero points) and still see later steps
+    /// render as if that work were done.
+    var currentStepComplete: Bool {
+        switch currentStep {
+        case 1: return scaleChosen
+        case 2: return labelsOK
+        case 3: return unitsOK && titleOK
+        case 4: return plottingOK
+        case 5: return lineOK
+        case 6: return gradientTriangleReady && !studentGradientInput.trimmingCharacters(in: .whitespaces).isEmpty
+        default: return true
+        }
+    }
+
+    /// Short nudge shown under a disabled Next button, explaining what's
+    /// still needed to unlock the current step.
+    var currentStepIncompleteHint: String {
+        switch currentStep {
+        case 1: return "Choose a scale to continue."
+        case 2: return "Fill in both axis labels to continue."
+        case 3: return "Fill in the units and title to continue."
+        case 4: return "Plot every point accurately to continue."
+        case 5: return "Balance the best-fit line through the trend to continue."
+        case 6: return "Tap two points on the line and enter your gradient to continue."
+        default: return ""
+        }
+    }
+
     func advance() {
-        guard !isLastStep else { return }
+        guard !isLastStep, currentStepComplete else { return }
         stepIndex += 1
     }
 
@@ -537,17 +578,26 @@ struct GraphCoachPracticeView: View {
                             .buttonStyle(.bordered)
                     }
                     let isShortModeEnd = viewModel.isLastStep && viewModel.currentStep != 6
-                    Button(viewModel.isLastStep ? "Finish" : "Next") {
-                        inputFocused = false
-                        if isShortModeEnd {
-                            viewModel.finishShortMode(onSaved: { onSaved?() })
-                        } else {
-                            viewModel.advance()
+                    VStack(spacing: 6) {
+                        Button(viewModel.isLastStep ? "Finish" : "Next") {
+                            inputFocused = false
+                            if isShortModeEnd {
+                                viewModel.finishShortMode(onSaved: { onSaved?() })
+                            } else {
+                                viewModel.advance()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.purple)
+                        .frame(maxWidth: .infinity)
+                        .disabled(!viewModel.currentStepComplete)
+
+                        if !viewModel.currentStepComplete {
+                            Text(viewModel.currentStepIncompleteHint)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.purple)
-                    .frame(maxWidth: .infinity)
                 }
             } else if !viewModel.isFirstStep {
                 Button("Back") { viewModel.retreat() }
@@ -972,7 +1022,7 @@ private struct BestFitStepView: View {
                 definition: viewModel.graphType.definition,
                 axisMaxX: viewModel.axisMaxX,
                 axisMaxY: viewModel.axisMaxY,
-                points: viewModel.plottedPoints.isEmpty ? viewModel.dataset.points : viewModel.plottedPoints,
+                points: viewModel.plottedPoints,
                 start: Binding(get: { viewModel.lineStart }, set: { viewModel.lineStart = $0 }),
                 end: Binding(get: { viewModel.lineEnd }, set: { viewModel.lineEnd = $0 }),
                 isFreehand: isFreehand
@@ -1160,7 +1210,7 @@ private struct GradientStepView: View {
                     axisMaxY: viewModel.axisMaxY,
                     lineStart: viewModel.lineStart,
                     lineEnd: viewModel.lineEnd,
-                    points: viewModel.plottedPoints.isEmpty ? viewModel.dataset.points : viewModel.plottedPoints,
+                    points: viewModel.plottedPoints,
                     tapA: Binding(get: { viewModel.gradientTapA }, set: { viewModel.gradientTapA = $0 }),
                     tapB: Binding(get: { viewModel.gradientTapB }, set: { viewModel.gradientTapB = $0 })
                 )
