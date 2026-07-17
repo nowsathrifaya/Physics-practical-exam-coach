@@ -161,6 +161,7 @@ final class ResistanceWireExperimentViewModel {
             ammeterValue > 0
         else { return }
 
+        SoundManager.shared.play(.measurement)
         let resistanceOhm = voltmeterValue / ammeterValue
         // Plausibility bound only, never disclosed as a number — catches an
         // implied resistance wildly outside what this length could give.

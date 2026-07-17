@@ -59,7 +59,7 @@ struct RefractionVirtualLabExperiment: VirtualLabExperiment {
             id: "measured_from_normal",
             prompt: "A student measured their angles from the glass surface instead of the normal. Explain the mistake.",
             modelAnswerKeywords: ["from the normal", "not the surface", "perpendicular", "incorrect angle", "should be from normal"],
-            modelAnswer: "Angles of incidence and refraction must always be measured from the normal (perpendicular to the surface), not from the surface itself, otherwise the calculated angles \u2014 and hence n \u2014 will be wrong.",
+            modelAnswer: "Angles of incidence and refraction must always be measured from the normal (perpendicular to the surface), not from the surface itself, otherwise the calculated angles \u{2014} and hence n \u{2014} will be wrong.",
             marks: 2
         ),
         ExperimentQuestion(

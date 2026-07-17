@@ -142,11 +142,13 @@ final class VernierExperimentViewModel {
     }
 
     func closeJaws() {
+        SoundManager.shared.play(.measurement)
         apparatus.closeJaws()
     }
 
     func confirmReading() {
         guard let value = Double(readingInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) else { return }
+        SoundManager.shared.play(.measurement)
         readings.append(LabReading(
             trialNumber: apparatus.currentTrialIndex + 1,
             label: "d (\(VernierLabState.trialLabels[apparatus.currentTrialIndex]))",

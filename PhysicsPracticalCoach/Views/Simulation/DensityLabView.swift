@@ -96,6 +96,7 @@ final class DensityExperimentViewModel {
 
     func confirmInitialReading() {
         guard let value = Double(initialReadingInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) else { return }
+        SoundManager.shared.play(.measurement)
         initialReadingConfirmed = value
         readings.append(LabReading(trialNumber: 1, label: "V\u{2081} (before)", value: value, unit: "cm\u{00B3}"))
         initialReadingInput = ""
@@ -107,6 +108,7 @@ final class DensityExperimentViewModel {
 
     func confirmFinalReading() {
         guard let value = Double(finalReadingInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) else { return }
+        SoundManager.shared.play(.measurement)
         readings.append(LabReading(trialNumber: 2, label: "V\u{2082} (after)", value: value, unit: "cm\u{00B3}"))
         finalReadingInput = ""
     }

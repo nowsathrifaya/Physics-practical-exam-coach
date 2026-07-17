@@ -335,8 +335,8 @@ private struct CollectApparatusStageView: View {
 
     /// Local named coordinate space shared by the shelf cards and the
     /// workbench drop target. Using a local space (rather than `.global`)
-    /// avoids recomputing screen-relative coordinates \u2014 including
-    /// safe-area/navigation-bar geometry \u2014 on every single drag frame,
+    /// avoids recomputing screen-relative coordinates \u{2014} including
+    /// safe-area/navigation-bar geometry \u{2014} on every single drag frame,
     /// which is what made the drag feel stuttery.
     fileprivate static let workspaceSpace = "labApparatusWorkspace"
 
@@ -656,7 +656,7 @@ private struct ShelfApparatusCard: View {
         .opacity(isPlaced ? 0.35 : 1)
         // Captured on the card's static, pre-drag layout (before scale/offset
         // are applied below) so this frame never needs to be recomputed as
-        // the card moves \u2014 that per-frame geometry recomputation, tied to
+        // the card moves \u{2014} that per-frame geometry recomputation, tied to
         // the animated node itself, was the main source of drag stutter.
         .background(
             GeometryReader { geo in
@@ -684,7 +684,7 @@ private struct ShelfApparatusCard: View {
                     // "all placed"/"checking" transitions) can otherwise get
                     // inherited by this transaction, making the card visibly
                     // lag or spring behind the finger instead of tracking it
-                    // 1:1 \u2014 that lag was the main "not smooth" complaint.
+                    // 1:1 \u{2014} that lag was the main "not smooth" complaint.
                     var transaction = Transaction()
                     transaction.disablesAnimations = true
                     withTransaction(transaction) {

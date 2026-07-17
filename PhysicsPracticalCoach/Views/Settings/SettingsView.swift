@@ -12,6 +12,7 @@ struct SettingsView: View {
     let homeViewModel: HomeViewModel
     @Environment(\.modelContext) private var modelContext
     @State private var showResetConfirmation = false
+    @State private var soundEffectsEnabled = true
 
     var body: some View {
         List {
@@ -26,6 +27,16 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+            }
+
+            Section("Feedback") {
+                Toggle("Sound effects", isOn: $soundEffectsEnabled)
+                    .onChange(of: soundEffectsEnabled) { _, newValue in
+                        SoundManager.shared.isEnabled = newValue
+                        if newValue {
+                            SoundManager.shared.play(.tap)
+                        }
+                    }
             }
 
             Section("Data") {
@@ -46,6 +57,9 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .onAppear {
+            soundEffectsEnabled = SoundManager.shared.isEnabled
+        }
         .alert("Reset all progress?", isPresented: $showResetConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Reset", role: .destructive) {

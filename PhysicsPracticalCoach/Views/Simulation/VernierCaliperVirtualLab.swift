@@ -16,7 +16,7 @@ struct VernierCaliperVirtualLabExperiment: VirtualLabExperiment {
 
     let aim = "To measure the diameter of a cylindrical rod accurately using a vernier caliper, at several points along its length, allowing for any zero error."
 
-    let theory = "A vernier caliper reads to a precision finer than its main scale by finding which vernier scale division coincides with a main scale division. The reading is (main scale value) + (coinciding vernier division \u00D7 vernier constant), corrected for any zero error by subtracting it from the raw reading."
+    let theory = "A vernier caliper reads to a precision finer than its main scale by finding which vernier scale division coincides with a main scale division. The reading is (main scale value) + (coinciding vernier division \u{00D7} vernier constant), corrected for any zero error by subtracting it from the raw reading."
 
     let learningOutcome = "By the end of this experiment you should be able to close the caliper's jaws on an object, read the main scale and the coinciding vernier line together, apply a given zero error, and average several readings for a possibly non-uniform rod."
 

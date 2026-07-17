@@ -106,6 +106,7 @@ final class PotentiometerExperimentViewModel {
 
     func recordReading() {
         guard let voltmeterValue = Double(voltmeterInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) else { return }
+        SoundManager.shared.play(.measurement)
         readings.append(LabReading(
             trialNumber: readings.count + 1,
             label: "Length l", value: (apparatus.jockeyPositionM * 100).rounded() / 100, unit: "m",

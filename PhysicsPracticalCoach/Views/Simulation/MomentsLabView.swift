@@ -40,7 +40,7 @@ final class MomentsLabState {
     private var leftMomentNm: Double { leftForceN * leftDistanceM }
     private var rightMomentNm: Double { rightForceN * rightDistanceM }
 
-    /// Net moment (left \u2212 right) driving the live tilt — positive tips left down.
+    /// Net moment (left \u{2212} right) driving the live tilt — positive tips left down.
     var netMomentNm: Double { leftMomentNm - rightMomentNm }
 
     /// Live beam tilt in degrees, purely visual, clamped so the drawing
@@ -99,6 +99,7 @@ final class MomentsExperimentViewModel {
 
     func submitReading() {
         guard let value = Double(pendingReadingInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) else { return }
+        SoundManager.shared.play(.measurement)
         dropDistancesM.append(pendingDropDistanceM)
         readings.append(LabReading(
             trialNumber: readings.count + 1,

@@ -90,6 +90,7 @@ final class OhmsLawExperimentViewModel {
             let voltmeterValue = Double(voltmeterInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
         else { return }
 
+        SoundManager.shared.play(.measurement)
         readings.append(LabReading(
             trialNumber: readings.count + 1,
             label: "Current I", value: (ammeterValue * 1000).rounded() / 1000, unit: "A",

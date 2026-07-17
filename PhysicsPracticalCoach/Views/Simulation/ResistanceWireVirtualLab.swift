@@ -16,7 +16,7 @@ struct ResistanceWireVirtualLabExperiment: VirtualLabExperiment {
 
     let aim = "To investigate how the resistance of a wire varies with its length, and to determine the resistivity of the wire's material."
 
-    let theory = "Resistance is given by R = \u{03C1}l/A, where \u{03C1} is resistivity, l is the length in circuit, and A is the cross-sectional area. Plotting R against l gives a straight line through the origin with gradient \u{03C1}/A, so resistivity can be found from \u{03C1} = gradient \u00D7 A."
+    let theory = "Resistance is given by R = \u{03C1}l/A, where \u{03C1} is resistivity, l is the length in circuit, and A is the cross-sectional area. Plotting R against l gives a straight line through the origin with gradient \u{03C1}/A, so resistivity can be found from \u{03C1} = gradient \u{00D7} A."
 
     let learningOutcome = "By the end of this experiment you should be able to vary the length of wire in circuit using a sliding contact, take ammeter/voltmeter readings at each length, calculate R = V/I, and use an R-l graph to find resistivity."
 
@@ -67,14 +67,14 @@ struct ResistanceWireVirtualLabExperiment: VirtualLabExperiment {
         ExperimentQuestion(
             id: "why_r_increases_with_l",
             prompt: "Explain why the resistance increases as the length of wire in the circuit increases.",
-            modelAnswerKeywords: ["r = \u03c1l/a", "more collisions", "longer path", "proportional to length", "electrons collide"],
-            modelAnswer: "A longer wire gives free electrons more collisions with the lattice ions along their path, and since R = \u03c1l/A, resistance increases directly with length.",
+            modelAnswerKeywords: ["r = \u{03c1}l/a", "more collisions", "longer path", "proportional to length", "electrons collide"],
+            modelAnswer: "A longer wire gives free electrons more collisions with the lattice ions along their path, and since R = \u{03c1}l/A, resistance increases directly with length.",
             marks: 2
         ),
         ExperimentQuestion(
             id: "resistivity_from_gradient",
             prompt: "Explain how you would use your R-l graph, together with the wire's cross-sectional area A, to find the resistivity \u{03C1}.",
-            modelAnswerKeywords: ["gradient", "\u03c1 = gradient", "multiply by area", "r = \u03c1l/a rearranged"],
+            modelAnswerKeywords: ["gradient", "\u{03c1} = gradient", "multiply by area", "r = \u{03c1}l/a rearranged"],
             modelAnswer: "Since R = (\u{03C1}/A)l, the gradient of the R-l graph equals \u{03C1}/A, so multiplying the gradient by the given cross-sectional area A gives the resistivity \u{03C1}.",
             marks: 2
         ),

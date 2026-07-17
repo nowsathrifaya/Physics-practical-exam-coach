@@ -96,6 +96,7 @@ final class SpringExperimentViewModel {
 
     func submitReading() {
         guard let value = Double(pendingReadingInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) else { return }
+        SoundManager.shared.play(.measurement)
         let load = apparatus.loadedMassKg * 9.81
         readings.append(LabReading(
             trialNumber: readings.count + 1,

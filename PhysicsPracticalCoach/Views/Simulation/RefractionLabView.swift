@@ -185,6 +185,7 @@ final class RefractionExperimentViewModel {
             label: "Angle of incidence i", value: (apparatus.angleOfIncidenceDeg * 10).rounded() / 10, unit: "\u{00B0}",
             derivedLabel: "Angle of refraction r (read)", derivedValue: (studentR * 10).rounded() / 10, derivedUnit: "\u{00B0}"
         ))
+        SoundManager.shared.play(.measurement)
         refractionReadingInput = ""
         apparatus.rearmForNextTrial()
     }

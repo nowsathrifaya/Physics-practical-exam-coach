@@ -16,7 +16,7 @@ struct PotentiometerVirtualLabExperiment: VirtualLabExperiment {
 
     let aim = "To investigate how the potential difference across a length of resistance wire varies with that length, using a sliding jockey."
 
-    let theory = "With a constant driver current I flowing through a uniform resistance wire, the potential difference across a length l of the wire is V = I \u00D7 r \u00D7 l, where r is the resistance per unit length. So V is directly proportional to l, and the gradient of a V-l graph gives the potential gradient K = I \u00D7 r."
+    let theory = "With a constant driver current I flowing through a uniform resistance wire, the potential difference across a length l of the wire is V = I \u{00D7} r \u{00D7} l, where r is the resistance per unit length. So V is directly proportional to l, and the gradient of a V-l graph gives the potential gradient K = I \u{00D7} r."
 
     let learningOutcome = "By the end of this experiment you should be able to tap a jockey along a resistance wire at several positions, read the voltmeter accurately at each, and use a V-l graph to find the potential gradient."
 
@@ -60,7 +60,7 @@ struct PotentiometerVirtualLabExperiment: VirtualLabExperiment {
         ExperimentQuestion(
             id: "why_proportional",
             prompt: "Explain why V is directly proportional to the length l of wire used.",
-            modelAnswerKeywords: ["v = i", "constant current", "resistance proportional to length", "uniform wire", "r = \u03c1l/a"],
+            modelAnswerKeywords: ["v = i", "constant current", "resistance proportional to length", "uniform wire", "r = \u{03c1}l/a"],
             modelAnswer: "Since the wire is uniform, its resistance is proportional to its length; with a constant driver current, V = IR is therefore also directly proportional to l.",
             marks: 2
         ),

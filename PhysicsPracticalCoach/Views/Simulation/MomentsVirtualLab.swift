@@ -15,7 +15,7 @@ struct MomentsVirtualLabExperiment: VirtualLabExperiment {
 
     let aim = "To verify the principle of moments by balancing a beam pivoted at its centre using known and unknown forces at different distances."
 
-    let theory = "The principle of moments states that for a beam in equilibrium, the sum of clockwise moments about the pivot equals the sum of anticlockwise moments: F\u2081d\u2081 = F\u2082d\u2082, where moment = force \u00D7 perpendicular distance from the pivot."
+    let theory = "The principle of moments states that for a beam in equilibrium, the sum of clockwise moments about the pivot equals the sum of anticlockwise moments: F\u{2081}d\u{2081} = F\u{2082}d\u{2082}, where moment = force \u{00D7} perpendicular distance from the pivot."
 
     let learningOutcome = "By the end of this experiment you should be able to position a known weight and balance it against another weight by adjusting its distance from the pivot, then verify that the clockwise and anticlockwise moments are equal."
 

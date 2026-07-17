@@ -38,7 +38,7 @@ struct LabApparatusItem: Identifiable, Hashable {
     /// Shown once correctly placed, describing the assembly action for
     /// Stage 3 (e.g. "Attach the string to the clamp.").
     let setUpInstruction: String
-    /// Shown in the info sheet (\u2139\ufe0f button on each apparatus card) —
+    /// Shown in the info sheet (\u{2139}\u{fe0f} button on each apparatus card) —
     /// revision-style facts about the instrument itself. Defaulted to empty
     /// so existing call sites compile unchanged; experiments can fill these
     /// in for genuine measuring instruments (rulers, stopwatches) where
@@ -201,6 +201,7 @@ final class VirtualLabWorkflowViewModel {
     var allApparatusPlaced: Bool { placedApparatus.count == experiment.apparatusItems.count }
 
     func startExperiment() {
+        SoundManager.shared.play(.tap)
         stage = .collectApparatus
     }
 
@@ -211,17 +212,21 @@ final class VirtualLabWorkflowViewModel {
         if isCorrectDrop {
             placedApparatus.insert(item.id)
             apparatusHint = nil
+            SoundManager.shared.play(.success)
         } else {
             apparatusHint = item.placementHint
+            SoundManager.shared.play(.error)
         }
     }
 
     func proceedToSetUp() {
         guard allApparatusPlaced else { return }
+        SoundManager.shared.play(.tap)
         stage = .setUp
     }
 
     func proceedToCoreExperiment() {
+        SoundManager.shared.play(.tap)
         stage = .coreExperiment
     }
 
@@ -231,6 +236,7 @@ final class VirtualLabWorkflowViewModel {
     /// that result was calculated.
     func coreExperimentFinished(_ result: LabRunResult) {
         coreResult = result
+        SoundManager.shared.play(result.correct ? .success : .tap)
         stage = .practicalQuestions
     }
 
@@ -239,10 +245,12 @@ final class VirtualLabWorkflowViewModel {
     }
 
     func proceedToConclusion() {
+        SoundManager.shared.play(.tap)
         stage = .conclusion
     }
 
     func selectConclusion(_ index: Int) {
+        SoundManager.shared.play(.tap)
         conclusionSelection = index
     }
 
@@ -304,11 +312,13 @@ final class VirtualLabWorkflowViewModel {
             examTip: experiment.theory
         )
         finalResult = outcome
+        SoundManager.shared.play(outcome.correct ? .complete : .error)
         stage = .results
         recorder.record(experimentTitle: experiment.title, result: outcome, maxScore: 100)
     }
 
     func viewExaminerFeedback() {
+        SoundManager.shared.play(.tap)
         stage = .examinerFeedback
     }
 
@@ -329,6 +339,7 @@ final class VirtualLabWorkflowViewModel {
     }
 
     func restart() {
+        SoundManager.shared.play(.tap)
         stage = .introduction
         placedApparatus = []
         apparatusHint = nil

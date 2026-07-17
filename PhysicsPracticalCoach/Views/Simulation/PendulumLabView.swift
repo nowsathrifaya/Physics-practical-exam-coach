@@ -202,6 +202,7 @@ final class PendulumExperimentViewModel {
             derivedUnit: "s"
         )
         readings.append(reading)
+        SoundManager.shared.play(.measurement)
         apparatus.rearmForNextTrial()
     }
 

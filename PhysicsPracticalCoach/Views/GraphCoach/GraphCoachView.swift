@@ -396,6 +396,7 @@ final class GraphCoachPracticeViewModel {
         let gradient = Double(studentGradientInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
         let outcome = marker.mark(dataset: dataset, studentGradient: gradient, curriculum: curriculum)
         result = outcome
+        SoundManager.shared.play(outcome.correct ? .success : .error)
         repository.save(
             curriculum: curriculum, mode: .graphCoach, target: graphType.label,
             score: outcome.score, maxScore: 100, feedback: outcome.feedback
@@ -409,6 +410,7 @@ final class GraphCoachPracticeViewModel {
     /// gradient to mark.
     func finishShortMode(onSaved: () -> Void) {
         let checklistScore = estimatedMarkOutOf10 * 10
+        SoundManager.shared.play(.complete)
         repository.save(
             curriculum: curriculum, mode: .graphCoach,
             target: "\(graphType.label) - \(mode.label)",

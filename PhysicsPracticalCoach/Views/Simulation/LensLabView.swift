@@ -166,6 +166,7 @@ final class LensExperimentViewModel {
     /// screen and metre rule in the exam hall.
     func confirmFocus() {
         guard apparatus.hasUsableImage else { return } // no real image to catch; button is disabled for this too
+        SoundManager.shared.play(.measurement)
         let u = apparatus.objectDistanceCm
         let v = apparatus.screenPositionCm - apparatus.lensPositionCm
         readings.append(LabReading(

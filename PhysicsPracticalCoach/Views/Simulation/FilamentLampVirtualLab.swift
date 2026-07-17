@@ -16,7 +16,7 @@ struct FilamentLampVirtualLabExperiment: VirtualLabExperiment {
 
     let aim = "To investigate how the current through a filament lamp varies with the potential difference across it, and to show that the lamp does not obey Ohm's Law."
 
-    let theory = "For an ohmic conductor, V is directly proportional to I, giving a straight-line V-I graph. A filament lamp's resistance increases with temperature as R = R\u2080 + kI, so as current increases, the filament heats up and its resistance rises, curving the V-I graph rather than keeping it a straight line."
+    let theory = "For an ohmic conductor, V is directly proportional to I, giving a straight-line V-I graph. A filament lamp's resistance increases with temperature as R = R\u{2080} + kI, so as current increases, the filament heats up and its resistance rises, curving the V-I graph rather than keeping it a straight line."
 
     let learningOutcome = "By the end of this experiment you should be able to vary the current through a filament lamp using a rheostat, take ammeter/voltmeter readings across a wide range, and compare R = V/I at low and high current to demonstrate non-ohmic behaviour."
 

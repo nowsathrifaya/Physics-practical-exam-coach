@@ -36,6 +36,7 @@ final class ApparatusPracticeViewModel {
         let reading = Double(studentInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
         let outcome = trainer.mark(question: question, studentReading: reading)
         result = outcome
+        SoundManager.shared.play(outcome.correct ? .success : .error)
         repository.save(
             curriculum: curriculum,
             mode: .apparatusPractice,
@@ -48,6 +49,7 @@ final class ApparatusPracticeViewModel {
     }
 
     func nextQuestion() {
+        SoundManager.shared.play(.tap)
         question = trainer.question(type: apparatusType, seed: Int.random(in: 0...Int(Int32.max)), curriculum: curriculum)
         studentInput = ""
         result = nil

@@ -183,6 +183,7 @@ final class CoolingCurveExperimentViewModel {
             let elapsed = pendingElapsedS,
             let temp = Double(tempInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
         else { return }
+        SoundManager.shared.play(.measurement)
         readings.append(LabReading(
             trialNumber: readings.count + 1,
             label: "t = \(Int(elapsed.rounded())) s", value: elapsed, unit: "s",
