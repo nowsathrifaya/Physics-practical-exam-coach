@@ -69,6 +69,12 @@ final class OhmsLawExperimentViewModel {
     private static let ammeterTolerance = 0.03 // A
     private static let voltmeterTolerance = 0.1 // V
 
+    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
+    /// once after `calculateResult()` sets `result`. Nil by default, so
+    /// existing standalone `OhmsLawLabView` usage behaves exactly as before;
+    /// only the new wrapping workflow sets this.
+    var onFinished: ((LabRunResult) -> Void)?
+
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = OhmsLawLabState(seed: seed)
@@ -123,6 +129,7 @@ final class OhmsLawExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.ohmsLaw.label, result: outcome)
+        onFinished?(outcome)
     }
 
     var studentDataset: GraphDataset {
@@ -162,12 +169,14 @@ struct OhmsLawLabView: View {
 
     private enum Field { case ammeter, voltmeter }
 
-    init(curriculum: Curriculum, repository: AttemptRepository) {
+    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
         self.curriculum = curriculum
-        _viewModel = State(initialValue: OhmsLawExperimentViewModel(
+        let model = OhmsLawExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        ))
+        )
+        model.onFinished = onFinished
+        _viewModel = State(initialValue: model)
     }
 
     var body: some View {

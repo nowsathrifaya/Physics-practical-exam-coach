@@ -70,6 +70,12 @@ final class DensityExperimentViewModel {
     private static let volumeTolerance = 0.5 // cm3, matches ApparatusTrainer's measuring cylinder convention
     private static let densityToleranceFraction = 0.12
 
+    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
+    /// once after `calculateResult()` sets `result`. Nil by default, so
+    /// existing standalone `DensityLabView` usage behaves exactly as before;
+    /// only the new wrapping workflow sets this.
+    var onFinished: ((LabRunResult) -> Void)?
+
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = DensityLabState(seed: seed)
@@ -139,6 +145,7 @@ final class DensityExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.densityDisplacement.label, result: outcome)
+        onFinished?(outcome)
     }
 
     func newTask() {
@@ -164,12 +171,14 @@ struct DensityLabView: View {
 
     private enum Field { case initial, final, density }
 
-    init(curriculum: Curriculum, repository: AttemptRepository) {
+    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
         self.curriculum = curriculum
-        _viewModel = State(initialValue: DensityExperimentViewModel(
+        let model = DensityExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        ))
+        )
+        model.onFinished = onFinished
+        _viewModel = State(initialValue: model)
     }
 
     var body: some View {

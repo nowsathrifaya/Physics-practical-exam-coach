@@ -74,27 +74,27 @@ struct SimulationDestinationView: View {
         case .pendulum:
             PendulumVirtualLabView(curriculum: curriculum, repository: repository)
         case .springExtension:
-            SpringLabView(curriculum: curriculum, repository: repository)
+            SpringVirtualLabView(curriculum: curriculum, repository: repository)
         case .ohmsLaw:
-            OhmsLawLabView(curriculum: curriculum, repository: repository)
+            OhmsLawVirtualLabView(curriculum: curriculum, repository: repository)
         case .densityDisplacement:
-            DensityLabView(curriculum: curriculum, repository: repository)
+            DensityVirtualLabView(curriculum: curriculum, repository: repository)
         case .moments:
-            MomentsLabView(curriculum: curriculum, repository: repository)
+            MomentsVirtualLabView(curriculum: curriculum, repository: repository)
         case .potentiometer:
-            PotentiometerLabView(curriculum: curriculum, repository: repository)
+            PotentiometerVirtualLabView(curriculum: curriculum, repository: repository)
         case .lensFocusing:
-            LensLabView(curriculum: curriculum, repository: repository)
+            LensVirtualLabView(curriculum: curriculum, repository: repository)
         case .refraction:
-            RefractionLabView(curriculum: curriculum, repository: repository)
+            RefractionVirtualLabView(curriculum: curriculum, repository: repository)
         case .resistanceWire:
-            ResistanceWireLabView(curriculum: curriculum, repository: repository)
+            ResistanceWireVirtualLabView(curriculum: curriculum, repository: repository)
         case .vernierCaliper:
-            VernierCaliperLabView(curriculum: curriculum, repository: repository)
+            VernierCaliperVirtualLabView(curriculum: curriculum, repository: repository)
         case .coolingCurve:
-            CoolingCurveLabView(curriculum: curriculum, repository: repository)
+            CoolingCurveVirtualLabView(curriculum: curriculum, repository: repository)
         case .filamentLamp:
-            FilamentLampLabView(curriculum: curriculum, repository: repository)
+            FilamentLampVirtualLabView(curriculum: curriculum, repository: repository)
         default:
             GenericSimulationView(type: type)
         }

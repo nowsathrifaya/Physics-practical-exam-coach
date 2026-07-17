@@ -117,6 +117,12 @@ final class VernierExperimentViewModel {
     private static let perTrialToleranceCm = 0.02
     private static let meanToleranceCm = 0.02
 
+    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
+    /// once after `calculateResult()` sets `result`. Nil by default, so
+    /// existing standalone `VernierCaliperLabView` usage behaves exactly as before;
+    /// only the new wrapping workflow sets this.
+    var onFinished: ((LabRunResult) -> Void)?
+
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = VernierLabState(seed: seed)
@@ -183,6 +189,7 @@ final class VernierExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.vernierCaliper.label, result: outcome)
+        onFinished?(outcome)
     }
 
     func newTask() {
@@ -205,12 +212,14 @@ struct VernierCaliperLabView: View {
     @State private var viewModel: VernierExperimentViewModel
     @FocusState private var fieldFocused: Bool
 
-    init(curriculum: Curriculum, repository: AttemptRepository) {
+    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
         self.curriculum = curriculum
-        _viewModel = State(initialValue: VernierExperimentViewModel(
+        let model = VernierExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        ))
+        )
+        model.onFinished = onFinished
+        _viewModel = State(initialValue: model)
     }
 
     var body: some View {

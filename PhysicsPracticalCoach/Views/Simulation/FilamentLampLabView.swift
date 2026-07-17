@@ -108,6 +108,12 @@ final class FilamentLampExperimentViewModel {
     private static let voltmeterTolerance = 0.15 // V
     private static let ratioToleranceFraction = 0.25 // generous: compounds two readings' own errors
 
+    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
+    /// once after `calculateResult()` sets `result`. Nil by default, so
+    /// existing standalone `FilamentLampLabView` usage behaves exactly as before;
+    /// only the new wrapping workflow sets this.
+    var onFinished: ((LabRunResult) -> Void)?
+
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = FilamentLampLabState(seed: seed)
@@ -182,6 +188,7 @@ final class FilamentLampExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.filamentLamp.label, result: outcome)
+        onFinished?(outcome)
     }
 
     var studentDataset: GraphDataset {
@@ -221,12 +228,14 @@ struct FilamentLampLabView: View {
 
     private enum Field { case ammeter, voltmeter, ratio }
 
-    init(curriculum: Curriculum, repository: AttemptRepository) {
+    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
         self.curriculum = curriculum
-        _viewModel = State(initialValue: FilamentLampExperimentViewModel(
+        let model = FilamentLampExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        ))
+        )
+        model.onFinished = onFinished
+        _viewModel = State(initialValue: model)
     }
 
     var body: some View {

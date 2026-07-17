@@ -82,6 +82,12 @@ final class PotentiometerExperimentViewModel {
     private(set) var result: LabRunResult?
     var voltmeterInput: String = ""
 
+    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
+    /// once after `calculateResult()` sets `result`. Nil by default, so
+    /// existing standalone `PotentiometerLabView` usage behaves exactly as before;
+    /// only the new wrapping workflow sets this.
+    var onFinished: ((LabRunResult) -> Void)?
+
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = PotentiometerLabState(seed: seed)
@@ -142,6 +148,7 @@ final class PotentiometerExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.potentiometer.label, result: outcome)
+        onFinished?(outcome)
     }
 
     var studentDataset: GraphDataset {
@@ -172,12 +179,14 @@ struct PotentiometerLabView: View {
     @State private var viewModel: PotentiometerExperimentViewModel
     @FocusState private var voltmeterFocused: Bool
 
-    init(curriculum: Curriculum, repository: AttemptRepository) {
+    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
         self.curriculum = curriculum
-        _viewModel = State(initialValue: PotentiometerExperimentViewModel(
+        let model = PotentiometerExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        ))
+        )
+        model.onFinished = onFinished
+        _viewModel = State(initialValue: model)
     }
 
     var body: some View {

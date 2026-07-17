@@ -950,10 +950,21 @@ private struct InteractivePlotCanvas: View {
 
 private struct BestFitStepView: View {
     let viewModel: GraphCoachPracticeViewModel
+    @State private var isFreehand = false
 
     var body: some View {
-        StepCard(title: "Draw the best-fit line", subtitle: "Drag the two handles so the line balances the scatter — don't join every point.") {
+        StepCard(
+            title: "Draw the best-fit line",
+            subtitle: isFreehand
+                ? "Swipe once across the trend in a single stroke, like a pencil on paper — don't join every point."
+                : "Drag the two handles so the line balances the scatter — don't join every point."
+        ) {
             RawDataTableCard(definition: viewModel.graphType.definition, points: viewModel.dataset.points)
+
+            Button(isFreehand ? "\u{1F590}\u{FE0F} Switch to drag handles" : "\u{270F}\u{FE0F} Draw freehand instead") {
+                isFreehand.toggle()
+            }
+            .font(.caption)
 
             BestFitLineCanvas(
                 definition: viewModel.graphType.definition,
@@ -961,7 +972,8 @@ private struct BestFitStepView: View {
                 axisMaxY: viewModel.axisMaxY,
                 points: viewModel.plottedPoints.isEmpty ? viewModel.dataset.points : viewModel.plottedPoints,
                 start: Binding(get: { viewModel.lineStart }, set: { viewModel.lineStart = $0 }),
-                end: Binding(get: { viewModel.lineEnd }, set: { viewModel.lineEnd = $0 })
+                end: Binding(get: { viewModel.lineEnd }, set: { viewModel.lineEnd = $0 }),
+                isFreehand: isFreehand
             )
             .frame(height: 280)
 
@@ -975,8 +987,16 @@ private struct BestFitStepView: View {
     }
 }
 
-/// Draws the scatter, plus a straight line between two large draggable
-/// handles the student positions to represent their best-fit line.
+/// Draws the scatter, plus a straight line the student positions either by
+/// dragging two large handles, or — when `isFreehand` is true — by swiping
+/// a single continuous stroke across the plot area. The stroke itself is
+/// never graded directly (a shaky finger stroke is not a meaningful
+/// "wobbly line" penalty the way it would be on paper): on release it's
+/// least-squares fitted with the same `LinearRegression` the checklist
+/// already uses, and only the resulting straight line becomes `start`/`end`
+/// — so freehand mode is a genuinely different *input* gesture feeding the
+/// exact same grading (`lineQuality`/`lineOK`) as the handle-drag mode,
+/// with zero new grading logic to keep in sync.
 /// A large draggable line-endpoint handle. Same safe local-offset drag
 /// pattern as `DraggableGraphPoint`: moves live during the gesture via a
 /// purely visual offset, and commits its real position once on release.
@@ -1012,6 +1032,9 @@ private struct BestFitLineCanvas: View {
     let points: [GraphPoint]
     @Binding var start: CGPoint
     @Binding var end: CGPoint
+    var isFreehand: Bool = false
+
+    @State private var strokeScreenPoints: [CGPoint] = []
 
     var body: some View {
         GeometryReader { geo in
@@ -1051,13 +1074,57 @@ private struct BestFitLineCanvas: View {
                     line.move(to: startScreen)
                     line.addLine(to: endScreen)
                     context.stroke(line, with: .color(.purple), lineWidth: 2.5)
+
+                    if strokeScreenPoints.count > 1 {
+                        var stroke = Path()
+                        stroke.move(to: strokeScreenPoints[0])
+                        for p in strokeScreenPoints.dropFirst() { stroke.addLine(to: p) }
+                        context.stroke(stroke, with: .color(.orange), style: StrokeStyle(lineWidth: 2.5, lineCap: .round, dash: [1, 6]))
+                    }
                 }
 
-                handle(at: startScreen) { newValue in start = fraction(for: newValue, plotRect: plotRect) }
-                handle(at: endScreen) { newValue in end = fraction(for: newValue, plotRect: plotRect) }
+                if isFreehand {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 1, coordinateSpace: .local)
+                                .onChanged { value in strokeScreenPoints.append(value.location) }
+                                .onEnded { _ in
+                                    commitFreehandStroke(plotRect: plotRect)
+                                    strokeScreenPoints = []
+                                }
+                        )
+                } else {
+                    handle(at: startScreen) { newValue in start = fraction(for: newValue, plotRect: plotRect) }
+                    handle(at: endScreen) { newValue in end = fraction(for: newValue, plotRect: plotRect) }
+                }
             }
         }
         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    /// Least-squares fits the raw stroke (converted from screen space into
+    /// real data units, same conversion the handle-drag path already uses)
+    /// and re-expresses the result as the two fractional endpoints
+    /// `start`/`end` expect — a stroke becomes a straight line the same
+    /// way a student's wobbly pencil line is judged by its overall trend,
+    /// not its wobble.
+    private func commitFreehandStroke(plotRect: CGRect) {
+        guard strokeScreenPoints.count >= 2 else { return }
+        let domainPoints: [RegressionPoint] = strokeScreenPoints.map { screen in
+            let f = fraction(for: screen, plotRect: plotRect)
+            return RegressionPoint(x: Double(f.x) * axisMaxX, y: Double(1 - f.y) * axisMaxY)
+        }
+        // A near-vertical swipe (all points at ~same x) has no meaningful
+        // slope to fit — ignore it rather than committing a wild line.
+        let xSpread = (domainPoints.map(\.x).max() ?? 0) - (domainPoints.map(\.x).min() ?? 0)
+        guard xSpread > axisMaxX * 0.1 else { return }
+
+        let regression = LinearRegression.fit(domainPoints)
+        let y0 = LinearRegression.yAt(0, result: regression)
+        let y1 = LinearRegression.yAt(axisMaxX, result: regression)
+        start = CGPoint(x: 0, y: min(max(1 - y0 / axisMaxY, -0.5), 1.5))
+        end = CGPoint(x: 1, y: min(max(1 - y1 / axisMaxY, -0.5), 1.5))
     }
 
     private func handle(at position: CGPoint, onMove: @escaping (CGPoint) -> Void) -> some View {

@@ -68,6 +68,12 @@ final class MomentsExperimentViewModel {
     private static let distanceReadingTolerance = 0.01 // m, matches a cm-scale ruler read to nearest small division
     private static let momentDifferenceTolerance = 0.15 // fraction, generous for a by-eye balance judgement
 
+    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
+    /// once after `calculateResult()` sets `result`. Nil by default, so
+    /// existing standalone `MomentsLabView` usage behaves exactly as before;
+    /// only the new wrapping workflow sets this.
+    var onFinished: ((LabRunResult) -> Void)?
+
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = MomentsLabState(seed: seed)
@@ -151,6 +157,7 @@ final class MomentsExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.moments.label, result: outcome)
+        onFinished?(outcome)
     }
 
     /// The left-side moment in effect for the trials recorded so far —
@@ -186,12 +193,14 @@ struct MomentsLabView: View {
     @State private var viewModel: MomentsExperimentViewModel
     @FocusState private var readingFieldFocused: Bool
 
-    init(curriculum: Curriculum, repository: AttemptRepository) {
+    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
         self.curriculum = curriculum
-        _viewModel = State(initialValue: MomentsExperimentViewModel(
+        let model = MomentsExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        ))
+        )
+        model.onFinished = onFinished
+        _viewModel = State(initialValue: model)
     }
 
     var body: some View {

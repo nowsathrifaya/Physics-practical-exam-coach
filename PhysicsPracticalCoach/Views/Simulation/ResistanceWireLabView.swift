@@ -127,6 +127,12 @@ final class ResistanceWireExperimentViewModel {
     private static let minLengthSpreadM = 0.4
     private static let tooCloseToleranceM = 0.08
 
+    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
+    /// once after `calculateResult()` sets `result`. Nil by default, so
+    /// existing standalone `ResistanceWireLabView` usage behaves exactly as before;
+    /// only the new wrapping workflow sets this.
+    var onFinished: ((LabRunResult) -> Void)?
+
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = ResistanceWireLabState(seed: seed)
@@ -245,6 +251,7 @@ final class ResistanceWireExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.resistanceWire.label, result: outcome)
+        onFinished?(outcome)
     }
 
     var studentDataset: GraphDataset {
@@ -286,12 +293,14 @@ struct ResistanceWireLabView: View {
 
     private enum Field { case ammeter, voltmeter }
 
-    init(curriculum: Curriculum, repository: AttemptRepository) {
+    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
         self.curriculum = curriculum
-        _viewModel = State(initialValue: ResistanceWireExperimentViewModel(
+        let model = ResistanceWireExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        ))
+        )
+        model.onFinished = onFinished
+        _viewModel = State(initialValue: model)
     }
 
     var body: some View {

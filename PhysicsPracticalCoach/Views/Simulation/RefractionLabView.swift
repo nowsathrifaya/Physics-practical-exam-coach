@@ -124,6 +124,12 @@ final class RefractionExperimentViewModel {
     /// student toward a wider spread during setup.
     private static let tooCloseToleranceDeg = 8.0
 
+    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
+    /// once after `calculateResult()` sets `result`. Nil by default, so
+    /// existing standalone `RefractionLabView` usage behaves exactly as before;
+    /// only the new wrapping workflow sets this.
+    var onFinished: ((LabRunResult) -> Void)?
+
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = RefractionLabState(seed: seed)
@@ -252,6 +258,7 @@ final class RefractionExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.refraction.label, result: outcome)
+        onFinished?(outcome)
     }
 
     var studentDataset: GraphDataset {
@@ -284,12 +291,14 @@ struct RefractionLabView: View {
     @FocusState private var readingFieldFocused: Bool
     @State private var isZoomed = false
 
-    init(curriculum: Curriculum, repository: AttemptRepository) {
+    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
         self.curriculum = curriculum
-        _viewModel = State(initialValue: RefractionExperimentViewModel(
+        let model = RefractionExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        ))
+        )
+        model.onFinished = onFinished
+        _viewModel = State(initialValue: model)
     }
 
     var body: some View {

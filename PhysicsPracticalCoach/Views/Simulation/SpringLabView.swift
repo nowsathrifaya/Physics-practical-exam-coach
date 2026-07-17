@@ -67,6 +67,12 @@ final class SpringExperimentViewModel {
     var pendingReadingInput: String = ""
     private(set) var awaitingReading = false
 
+    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
+    /// once after `calculateResult()` sets `result`. Nil by default, so
+    /// existing standalone `SpringLabView` usage behaves exactly as before;
+    /// only the new wrapping workflow sets this.
+    var onFinished: ((LabRunResult) -> Void)?
+
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = SpringLabState(seed: seed)
@@ -129,6 +135,7 @@ final class SpringExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.springExtension.label, result: outcome)
+        onFinished?(outcome)
     }
 
     /// Chart of the student's own recorded readings, reusing the exact
@@ -161,12 +168,14 @@ struct SpringLabView: View {
     @State private var viewModel: SpringExperimentViewModel
     @FocusState private var readingFieldFocused: Bool
 
-    init(curriculum: Curriculum, repository: AttemptRepository) {
+    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
         self.curriculum = curriculum
-        _viewModel = State(initialValue: SpringExperimentViewModel(
+        let model = SpringExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        ))
+        )
+        model.onFinished = onFinished
+        _viewModel = State(initialValue: model)
     }
 
     var body: some View {

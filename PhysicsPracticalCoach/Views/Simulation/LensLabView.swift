@@ -122,6 +122,12 @@ final class LensExperimentViewModel {
     private static let gradientTolerance = 0.25 // around the expected -1
     private static let minURangeCm = 12.0 // real mark schemes deduct for a cramped spread of u
 
+    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
+    /// once after `calculateResult()` sets `result`. Nil by default, so
+    /// existing standalone `LensLabView` usage behaves exactly as before;
+    /// only the new wrapping workflow sets this.
+    var onFinished: ((LabRunResult) -> Void)?
+
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = LensLabState(seed: seed)
@@ -230,6 +236,7 @@ final class LensExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.lensFocusing.label, result: outcome)
+        onFinished?(outcome)
     }
 
     var studentDataset: GraphDataset {
@@ -256,12 +263,14 @@ struct LensLabView: View {
     let curriculum: Curriculum
     @State private var viewModel: LensExperimentViewModel
 
-    init(curriculum: Curriculum, repository: AttemptRepository) {
+    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
         self.curriculum = curriculum
-        _viewModel = State(initialValue: LensExperimentViewModel(
+        let model = LensExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        ))
+        )
+        model.onFinished = onFinished
+        _viewModel = State(initialValue: model)
     }
 
     var body: some View {
