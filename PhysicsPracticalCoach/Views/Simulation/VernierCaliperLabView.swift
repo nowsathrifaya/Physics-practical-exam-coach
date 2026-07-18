@@ -311,34 +311,26 @@ struct VernierCaliperLabView: View {
 /// `DraggableObjectChip` snap-drop — the closing motion itself carries no
 /// measurement error in a real caliper (the jaws stop dead against the
 /// object), so it's deliberately not a precision drag.
+/// A single tap closes the jaws — deliberately not a drag gesture. In a
+/// real caliper, the jaws stop dead against the object regardless of how
+/// carefully the student squeezes, so the closing motion itself carries no
+/// measurement error worth simulating, and a drag-threshold gesture here
+/// only added a way for this to feel unresponsive for no pedagogical gain.
 private struct DraggableJawSqueezeChip: View {
     let onClosed: () -> Void
-    @State private var dragOffset: CGFloat = 0
-
-    private static let closeThreshold: CGFloat = -70
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "arrow.left.and.right")
-            Text("Drag to squeeze jaws shut")
+        Button(action: onClosed) {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.left.and.right")
+                Text("Tap to squeeze jaws shut")
+            }
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Capsule().fill(Color.accentColor.opacity(0.15)))
+            .foregroundStyle(Color.accentColor)
         }
-        .font(.caption.weight(.semibold))
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Capsule().fill(Color.accentColor.opacity(0.15)))
-        .foregroundStyle(Color.accentColor)
-        .offset(x: dragOffset)
-        .gesture(
-            DragGesture()
-                .onChanged { value in dragOffset = min(0, value.translation.width) }
-                .onEnded { value in
-                    if value.translation.width <= Self.closeThreshold {
-                        onClosed()
-                    }
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        dragOffset = 0
-                    }
-                }
-        )
+        .buttonStyle(.plain)
     }
 }

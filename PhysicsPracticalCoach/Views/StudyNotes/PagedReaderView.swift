@@ -23,6 +23,9 @@ struct PagedReaderView<Page: View>: View {
     /// the button on the last page (nothing further to do).
     var onFinished: (() -> Void)? = nil
     var finishedLabel: String = "Done"
+    /// Fires whenever the visible page changes (swipe or Back/Next) — used
+    /// by Study Notes to remember where a student left off.
+    var onPageChanged: ((Int) -> Void)? = nil
 
     @State private var index: Int
 
@@ -32,7 +35,8 @@ struct PagedReaderView<Page: View>: View {
         pageLabel: @escaping (Int) -> String,
         @ViewBuilder page: @escaping (Int) -> Page,
         onFinished: (() -> Void)? = nil,
-        finishedLabel: String = "Done"
+        finishedLabel: String = "Done",
+        onPageChanged: ((Int) -> Void)? = nil
     ) {
         self.pageCount = pageCount
         self.initialIndex = initialIndex
@@ -40,6 +44,7 @@ struct PagedReaderView<Page: View>: View {
         self.page = page
         self.onFinished = onFinished
         self.finishedLabel = finishedLabel
+        self.onPageChanged = onPageChanged
         _index = State(initialValue: min(max(initialIndex, 0), max(pageCount - 1, 0)))
     }
 
@@ -66,6 +71,7 @@ struct PagedReaderView<Page: View>: View {
             footer
         }
         .background(Color(.systemGroupedBackground))
+        .onChange(of: index) { _, newValue in onPageChanged?(newValue) }
     }
 
     private var header: some View {

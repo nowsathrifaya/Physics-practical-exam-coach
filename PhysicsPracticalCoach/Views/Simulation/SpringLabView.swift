@@ -196,14 +196,15 @@ struct SpringLabView: View {
             GeometryReader { geo in
                 let pivot = CGPoint(x: geo.size.width / 2, y: 24)
                 let rulerBottom = geo.size.height - 90
-                let pxPerMetre: CGFloat = (rulerBottom - pivot.y - 40) / 0.3 // spring can extend up to ~0.3 m visually
+                let restY = pivot.y + 40 // where the spring hangs at rest, before any load — this is the ruler's true zero
+                let pxPerMetre: CGFloat = (rulerBottom - restY) / 0.3 // spring can extend up to ~0.3 m visually
                 let extensionM = viewModel.apparatus.animatedExtensionM(at: timeline.date)
-                let bottomY = pivot.y + 40 + CGFloat(extensionM) * pxPerMetre
+                let bottomY = restY + CGFloat(extensionM) * pxPerMetre
 
                 Canvas { context, _ in
                     LabCanvasHelpers.drawVerticalRuler(
-                        context: context, originX: pivot.x + 60, topY: pivot.y,
-                        heightPx: rulerBottom - pivot.y, maxValue: 0.30, minorStep: 0.01
+                        context: context, originX: pivot.x + 60, topY: restY,
+                        heightPx: rulerBottom - restY, maxValue: 0.30, minorStep: 0.01
                     )
 
                     // Spring: drawn as a zig-zag path from pivot to bottom hook.
@@ -219,6 +220,22 @@ struct SpringLabView: View {
                     }
                     spring.addLine(to: CGPoint(x: pivot.x, y: bottomY))
                     context.stroke(spring, with: .color(Color(hex: "#0F5A4F")), lineWidth: 2.5)
+
+                    // Pointer: a dashed line from the hook straight across to
+                    // the ruler, plus an arrow at the ruler edge, so it's
+                    // clear which mark corresponds to the current position —
+                    // without this the ruler and the moving hook have no
+                    // visible connection to read from.
+                    var pointerLine = Path()
+                    pointerLine.move(to: CGPoint(x: pivot.x + 10, y: bottomY))
+                    pointerLine.addLine(to: CGPoint(x: pivot.x + 60, y: bottomY))
+                    context.stroke(pointerLine, with: .color(Color(hex: "#C0392B")), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                    var arrow = Path()
+                    arrow.move(to: CGPoint(x: pivot.x + 60, y: bottomY))
+                    arrow.addLine(to: CGPoint(x: pivot.x + 52, y: bottomY - 5))
+                    arrow.addLine(to: CGPoint(x: pivot.x + 52, y: bottomY + 5))
+                    arrow.closeSubpath()
+                    context.fill(arrow, with: .color(Color(hex: "#C0392B")))
 
                     if viewModel.apparatus.loadedMassKg > 0 {
                         LabCanvasHelpers.drawWeight(context: context, center: CGPoint(x: pivot.x, y: bottomY + 16), radiusPx: 16, color: Color(hex: "#D98B36"))

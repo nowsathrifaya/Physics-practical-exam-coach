@@ -40,18 +40,12 @@ func formatGridTick(_ value: Double) -> String {
     return String(format: "%.2g", value)
 }
 
-/// Draws real-graph-paper-style axes: light minor gridlines at every step,
-/// darker major gridlines every `majorEvery` steps, and numbered tick
-/// labels along both axes at each major line (e.g. 0, 2, 4, 6, 8, 10).
-/// Picks how many minor gridlines separate each numbered tick, so that a
-/// grid always gets a readable number of labels (~4-6) instead of a fixed
-/// stride that can leave most of the axis unlabeled on grids with few
-/// columns/rows (e.g. only "0" and "0.1" showing across an 8-column grid).
-private func labelStride(forCount count: Int, targetLabels: Int = 5) -> Int {
-    guard count > 0 else { return 1 }
-    return max(1, Int((Double(count) / Double(targetLabels)).rounded()))
-}
-
+/// Draws real-graph-paper-style axes: each major square (one `stepX`/`stepY`
+/// unit — the scale the student chose) is subdivided into `minorDivisions`
+/// finer, unlabeled minor gridlines, with darker major gridlines and a
+/// numbered tick label at every major line (e.g. 0, 2, 4, 6, 8, 10). This
+/// mirrors real exam graph paper: fine squares for precise plotting, with
+/// only the major lines carrying numbers.
 func drawGraphPaper(
     context: GraphicsContext,
     plotRect: CGRect,
@@ -59,48 +53,48 @@ func drawGraphPaper(
     maxY: Double,
     stepX: Double,
     stepY: Double,
-    majorEvery: Int? = nil
+    minorDivisions: Int = 5
 ) {
     guard stepX > 0, stepY > 0, maxX > 0, maxY > 0 else { return }
-    let columns = max(1, Int((maxX / stepX).rounded()))
-    let rows = max(1, Int((maxY / stepY).rounded()))
-    let columnLabelEvery = majorEvery ?? labelStride(forCount: columns)
-    let rowLabelEvery = majorEvery ?? labelStride(forCount: rows)
+    let majorColumns = max(1, Int((maxX / stepX).rounded()))
+    let majorRows = max(1, Int((maxY / stepY).rounded()))
+    let minorColumns = majorColumns * minorDivisions
+    let minorRows = majorRows * minorDivisions
 
     var minor = Path()
     var major = Path()
 
-    for c in 0...columns {
-        let x = plotRect.minX + plotRect.width * CGFloat(c) / CGFloat(columns)
+    for c in 0...minorColumns {
+        let x = plotRect.minX + plotRect.width * CGFloat(c) / CGFloat(minorColumns)
         var line = Path()
         line.move(to: CGPoint(x: x, y: plotRect.minY))
         line.addLine(to: CGPoint(x: x, y: plotRect.maxY))
-        if c % columnLabelEvery == 0 { major.addPath(line) } else { minor.addPath(line) }
+        if c % minorDivisions == 0 { major.addPath(line) } else { minor.addPath(line) }
     }
-    for r in 0...rows {
+    for r in 0...minorRows {
         // r = 0 at the bottom (the origin), increasing upward — matches
         // domain values, which grow upward on the screen.
-        let y = plotRect.maxY - plotRect.height * CGFloat(r) / CGFloat(rows)
+        let y = plotRect.maxY - plotRect.height * CGFloat(r) / CGFloat(minorRows)
         var line = Path()
         line.move(to: CGPoint(x: plotRect.minX, y: y))
         line.addLine(to: CGPoint(x: plotRect.maxX, y: y))
-        if r % rowLabelEvery == 0 { major.addPath(line) } else { minor.addPath(line) }
+        if r % minorDivisions == 0 { major.addPath(line) } else { minor.addPath(line) }
     }
 
-    context.stroke(minor, with: .color(.secondary.opacity(0.15)), lineWidth: 0.5)
-    context.stroke(major, with: .color(.secondary.opacity(0.45)), lineWidth: 1)
+    context.stroke(minor, with: .color(.secondary.opacity(0.2)), lineWidth: 0.5)
+    context.stroke(major, with: .color(.secondary.opacity(0.6)), lineWidth: 1)
 
-    for c in stride(from: 0, through: columns, by: columnLabelEvery) {
-        let x = plotRect.minX + plotRect.width * CGFloat(c) / CGFloat(columns)
+    for c in stride(from: 0, through: minorColumns, by: minorDivisions) {
+        let x = plotRect.minX + plotRect.width * CGFloat(c) / CGFloat(minorColumns)
         context.draw(
-            Text(formatGridTick(Double(c) * stepX)).font(.system(size: 9)).foregroundStyle(.secondary),
+            Text(formatGridTick(Double(c / minorDivisions) * stepX)).font(.system(size: 9)).foregroundStyle(.secondary),
             at: CGPoint(x: x, y: plotRect.maxY + 11)
         )
     }
-    for r in stride(from: 0, through: rows, by: rowLabelEvery) {
-        let y = plotRect.maxY - plotRect.height * CGFloat(r) / CGFloat(rows)
+    for r in stride(from: 0, through: minorRows, by: minorDivisions) {
+        let y = plotRect.maxY - plotRect.height * CGFloat(r) / CGFloat(minorRows)
         context.draw(
-            Text(formatGridTick(Double(r) * stepY)).font(.system(size: 9)).foregroundStyle(.secondary),
+            Text(formatGridTick(Double(r / minorDivisions) * stepY)).font(.system(size: 9)).foregroundStyle(.secondary),
             at: CGPoint(x: plotRect.minX - 15, y: y)
         )
     }
@@ -226,8 +220,12 @@ final class GraphCoachPracticeViewModel {
     private(set) var stepIndex = 0
     private(set) var finished = false
 
-    // Step 1 — scale
-    var selectedScale: Double?
+    // Step 1 — scale (independent per axis, since X and Y ranges can differ
+    // in magnitude by a lot — e.g. extension in metres vs force in newtons —
+    // and forcing one shared "units per square" value onto both axes left
+    // whichever axis had the smaller range with almost no gridlines at all).
+    var selectedScaleX: Double?
+    var selectedScaleY: Double?
     // Step 2 — axis labels
     var xAxisLabelInput = ""
     var yAxisLabelInput = ""
@@ -269,7 +267,8 @@ final class GraphCoachPracticeViewModel {
     private func prefillSkippedSteps() {
         let firstStep = steps.first ?? 1
         if firstStep > 1 {
-            selectedScale = niceScaleCandidates(for: axisMaxX).last
+            selectedScaleX = niceScaleCandidates(for: axisMaxX).last
+            selectedScaleY = niceScaleCandidates(for: axisMaxY).last
             xAxisLabelInput = def.xLabel
             yAxisLabelInput = def.yLabel
             xUnitInput = def.xUnit
@@ -317,8 +316,11 @@ final class GraphCoachPracticeViewModel {
 
     // MARK: - Live checklist (updates instantly as the student works)
 
-    var scaleChosen: Bool { selectedScale != nil }
-    var scaleOK: Bool { selectedScale.map { isGoodScale($0, maxValue: max(axisMaxX, axisMaxY)) } ?? false }
+    var scaleChosen: Bool { selectedScaleX != nil && selectedScaleY != nil }
+    var scaleOK: Bool {
+        guard let sx = selectedScaleX, let sy = selectedScaleY else { return false }
+        return isGoodScale(sx, maxValue: axisMaxX) && isGoodScale(sy, maxValue: axisMaxY)
+    }
 
     var xLabelOK: Bool {
         xAxisLabelInput.trimmingCharacters(in: .whitespaces).lowercased()
@@ -466,7 +468,8 @@ final class GraphCoachPracticeViewModel {
         dataset = generator.generate(type: graphType, seed: Int.random(in: 0...Int(Int32.max)), curriculum: curriculum)
         studentGradientInput = ""
         result = nil
-        selectedScale = nil
+        selectedScaleX = nil
+        selectedScaleY = nil
         xAxisLabelInput = ""; yAxisLabelInput = ""
         xUnitInput = ""; yUnitInput = ""
         titleInput = ""
@@ -712,14 +715,46 @@ private struct ScaleStepView: View {
     let viewModel: GraphCoachPracticeViewModel
 
     var body: some View {
-        StepCard(title: "Choose a scale", subtitle: "Pick a scale that uses more than half the graph paper.") {
-            let candidates = viewModel.niceScaleCandidates(for: max(viewModel.axisMaxX, viewModel.axisMaxY))
+        StepCard(title: "Choose a scale", subtitle: "Pick a scale for each axis that uses more than half the graph paper.") {
+            VStack(alignment: .leading, spacing: 16) {
+                ScaleAxisPicker(
+                    title: "X-axis (\(viewModel.graphType.definition.xLabel))",
+                    candidates: viewModel.niceScaleCandidates(for: viewModel.axisMaxX),
+                    maxValue: viewModel.axisMaxX,
+                    viewModel: viewModel,
+                    selection: Binding(get: { viewModel.selectedScaleX }, set: { viewModel.selectedScaleX = $0 })
+                )
+                ScaleAxisPicker(
+                    title: "Y-axis (\(viewModel.graphType.definition.yLabel))",
+                    candidates: viewModel.niceScaleCandidates(for: viewModel.axisMaxY),
+                    maxValue: viewModel.axisMaxY,
+                    viewModel: viewModel,
+                    selection: Binding(get: { viewModel.selectedScaleY }, set: { viewModel.selectedScaleY = $0 })
+                )
+            }
+        }
+    }
+}
+
+/// One axis's row of scale candidates ("units per square") in the Scale
+/// step. Pulled out so X and Y can be chosen independently — each axis can
+/// have a very different range, so one shared scale value doesn't fit both.
+private struct ScaleAxisPicker: View {
+    let title: String
+    let candidates: [Double]
+    let maxValue: Double
+    let viewModel: GraphCoachPracticeViewModel
+    @Binding var selection: Double?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.subheadline.weight(.semibold))
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 90))], spacing: 10) {
                 ForEach(candidates, id: \.self) { candidate in
-                    let selected = viewModel.selectedScale == candidate
-                    let good = viewModel.isGoodScale(candidate, maxValue: max(viewModel.axisMaxX, viewModel.axisMaxY))
+                    let selected = selection == candidate
+                    let good = viewModel.isGoodScale(candidate, maxValue: maxValue)
                     Button {
-                        withAnimation(.snappy) { viewModel.selectedScale = candidate }
+                        withAnimation(.snappy) { selection = candidate }
                     } label: {
                         VStack(spacing: 4) {
                             Text(String(format: "%.3g", candidate)).font(.headline)
@@ -847,7 +882,8 @@ private struct PlotStepView: View {
                     definition: viewModel.graphType.definition,
                     axisMaxX: viewModel.axisMaxX,
                     axisMaxY: viewModel.axisMaxY,
-                    scale: viewModel.selectedScale,
+                    scaleX: viewModel.selectedScaleX,
+                    scaleY: viewModel.selectedScaleY,
                     targetCount: viewModel.dataset.points.count,
                     points: Binding(get: { viewModel.plottedPoints }, set: { viewModel.plottedPoints = $0 })
                 )
@@ -915,14 +951,15 @@ private struct InteractivePlotCanvas: View {
     let definition: GraphCoachType.Definition
     let axisMaxX: Double
     let axisMaxY: Double
-    let scale: Double?
+    let scaleX: Double?
+    let scaleY: Double?
     let targetCount: Int
     @Binding var points: [GraphPoint]
 
     @State private var plotFrame: CGRect = .zero
 
-    private var effectiveScaleX: Double { scale ?? axisMaxX / 8 }
-    private var effectiveScaleY: Double { scale ?? axisMaxY / 8 }
+    private var effectiveScaleX: Double { scaleX ?? niceGridStep(for: axisMaxX) }
+    private var effectiveScaleY: Double { scaleY ?? niceGridStep(for: axisMaxY) }
 
     var body: some View {
         GeometryReader { geo in
@@ -985,12 +1022,16 @@ private struct InteractivePlotCanvas: View {
         return GraphPoint(x: max(0, fx) * axisMaxX, y: max(0, fy) * axisMaxY)
     }
 
-    /// Snaps a screen point to the nearest grid intersection implied by the
-    /// chosen scale.
+    /// Snaps a screen point to the nearest minor grid intersection — the
+    /// finer subdivisions now drawn on the graph paper, five per major
+    /// square — so plotting resolution matches what the student can
+    /// actually see and aim for, not just the coarser labelled lines.
     private func snap(_ screen: CGPoint, plotRect: CGRect) -> CGPoint {
         let domain = domainPoint(from: screen, plotRect: plotRect)
-        let snappedX = (domain.x / effectiveScaleX).rounded() * effectiveScaleX
-        let snappedY = (domain.y / effectiveScaleY).rounded() * effectiveScaleY
+        let minorStepX = effectiveScaleX / 5
+        let minorStepY = effectiveScaleY / 5
+        let snappedX = (domain.x / minorStepX).rounded() * minorStepX
+        let snappedY = (domain.y / minorStepY).rounded() * minorStepY
         return CGPoint(
             x: plotRect.minX + CGFloat(snappedX / axisMaxX) * plotRect.width,
             y: plotRect.maxY - CGFloat(snappedY / axisMaxY) * plotRect.height

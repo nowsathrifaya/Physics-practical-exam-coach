@@ -37,6 +37,16 @@ struct HomeView: View {
 
                 TodayProgressCard(progress: homeViewModel.todayProgress, streakDays: homeViewModel.userStats.streakDays)
 
+                NavigationLink {
+                    if let resumed = LastStudiedNoteStore.resolve(curriculum: homeViewModel.curriculum) {
+                        StudyNoteCategoryDetailView(category: resumed.category, curriculum: homeViewModel.curriculum, resumeAtIndex: resumed.pageIndex)
+                    } else {
+                        StudyNotesListView(curriculum: homeViewModel.curriculum)
+                    }
+                } label: {
+                    LearnHeroCard(resumed: LastStudiedNoteStore.resolve(curriculum: homeViewModel.curriculum))
+                }
+
                 sectionHeader("Start here")
                 featureGrid
 
@@ -411,6 +421,53 @@ private struct DailyChallengeBanner: View {
 }
 
 // MARK: - Shared card components
+
+/// Full-width, larger-than-grid treatment for the Learn tab — deliberately
+/// not just a fifth tile squeezed into `featureGrid`, since a hero feature
+/// should read as more prominent than the other four, not equal to them.
+/// Shows "Continue reading: <note title>" and resumes at that exact page
+/// when the student has read something before, falling back to a generic
+/// invitation into the Study Notes list otherwise.
+private struct LearnHeroCard: View {
+    let resumed: (category: StudyNoteCategory, pageIndex: Int, note: StudyNote)?
+
+    private var title: String { resumed == nil ? "Learn" : "Continue reading" }
+    private var subtitle: String {
+        guard let resumed else { return "Study notes & concept walkthroughs for every topic" }
+        return "\(resumed.note.title) · \(resumed.category.label)"
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: "book.fill")
+                .font(.system(size: 30))
+                .foregroundStyle(.white)
+                .frame(width: 56, height: 56)
+                .background(Color.blue.gradient, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.title3.bold()).foregroundStyle(.primary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(Color.blue.opacity(0.25), lineWidth: 1.5)
+        )
+    }
+}
 
 struct FeatureCard: View {
     let title: String

@@ -416,6 +416,7 @@ struct StudyNotesListView: View {
 struct StudyNoteCategoryDetailView: View {
     let category: StudyNoteCategory
     let curriculum: Curriculum
+    var resumeAtIndex: Int = 0
     @Environment(\.dismiss) private var dismiss
 
     private var notes: [StudyNote] { StudyNotesBank.forCategory(category, curriculum: curriculum) }
@@ -427,11 +428,14 @@ struct StudyNoteCategoryDetailView: View {
             } else {
                 PagedReaderView(
                     pageCount: notes.count,
+                    initialIndex: min(max(resumeAtIndex, 0), notes.count - 1),
                     pageLabel: { "Note \($0 + 1) of \(notes.count)" },
                     page: { i in StudyNoteCardPage(note: notes[i]) },
                     onFinished: { dismiss() },
-                    finishedLabel: "Done"
+                    finishedLabel: "Done",
+                    onPageChanged: { LastStudiedNoteStore.record(category: category, pageIndex: $0) }
                 )
+                .onAppear { LastStudiedNoteStore.record(category: category, pageIndex: min(max(resumeAtIndex, 0), notes.count - 1)) }
             }
         }
         .navigationTitle(category.label)

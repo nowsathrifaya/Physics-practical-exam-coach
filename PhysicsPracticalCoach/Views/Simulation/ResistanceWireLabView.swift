@@ -429,8 +429,16 @@ private struct DialGaugeView: View {
 
     var body: some View {
         Canvas { context, size in
-            let center = CGPoint(x: size.width / 2, y: size.height * 0.85)
-            let radius = min(size.width, size.height) * 0.7
+            // Pivot sits at 72%, not 85%, of the canvas height — the
+            // previous 85% left only 15% of the canvas below it, not
+            // enough room for the "A"/"V" label drawn at `center.y + 18`
+            // to actually fit inside the canvas's bounds at the normal
+            // (unzoomed) gauge height. That's why the label — the only
+            // thing that visually tells the ammeter and voltmeter apart —
+            // only became visible once "Zoom meters" made the canvas
+            // tall enough to contain it.
+            let center = CGPoint(x: size.width / 2, y: size.height * 0.72)
+            let radius = min(size.width, size.height) * 0.58
 
             LabCanvasHelpers.drawProtractorArc(context: context, center: center, radius: radius, startDeg: 180, endDeg: 360, minorTickStepDeg: 2)
 

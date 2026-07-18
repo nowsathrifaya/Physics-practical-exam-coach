@@ -247,6 +247,45 @@ struct MomentsLabView: View {
                     beam.addLine(to: rightEnd)
                     context.stroke(beam, with: .color(Color(hex: "#8B5E3C")), lineWidth: 8)
 
+                    // Scale marks printed along the beam itself — the beam
+                    // *is* the metre rule in this experiment, so its
+                    // graduations must rotate with it rather than sit on a
+                    // separate fixed ruler below. Every 10 cm gets a major
+                    // tick + number; every 1 cm gets a minor tick, so the
+                    // student can actually read the distance where they
+                    // release the weight, matching `instructionText`'s
+                    // "read the distance off the ruler."
+                    let halfBeamCm = Int(MomentsLabState.halfBeamLengthM * 100)
+                    var minorTicks = Path()
+                    var majorTicks = Path()
+                    for cm in stride(from: -halfBeamCm, through: halfBeamCm, by: 1) {
+                        let t = CGFloat(cm) / CGFloat(halfBeamCm)
+                        let x = pivot.x + beamHalfLengthPx * t * cos(angleRad)
+                        let y = pivot.y + beamHalfLengthPx * t * sin(angleRad)
+                        let isMajor = cm % 10 == 0
+                        let tickLen: CGFloat = isMajor ? 10 : 5
+                        // Perpendicular to the beam so ticks read correctly at any tilt.
+                        let perpX = sin(angleRad) * tickLen
+                        let perpY = -cos(angleRad) * tickLen
+                        var tick = Path()
+                        tick.move(to: CGPoint(x: x, y: y))
+                        tick.addLine(to: CGPoint(x: x + perpX, y: y + perpY))
+                        if isMajor { majorTicks.addPath(tick) } else { minorTicks.addPath(tick) }
+                    }
+                    context.stroke(minorTicks, with: .color(.white.opacity(0.7)), lineWidth: 1)
+                    context.stroke(majorTicks, with: .color(.white), lineWidth: 1.5)
+                    for cm in stride(from: -halfBeamCm, through: halfBeamCm, by: 10) {
+                        let t = CGFloat(cm) / CGFloat(halfBeamCm)
+                        let x = pivot.x + beamHalfLengthPx * t * cos(angleRad)
+                        let y = pivot.y + beamHalfLengthPx * t * sin(angleRad)
+                        let labelOffsetX = sin(angleRad) * 20
+                        let labelOffsetY = -cos(angleRad) * 20
+                        LabCanvasHelpers.drawLabel(
+                            context: context, text: "\(abs(cm))",
+                            at: CGPoint(x: x + labelOffsetX, y: y + labelOffsetY), size: 8, color: .secondary
+                        )
+                    }
+
                     // Left (fixed, given) weight.
                     let leftWeightT = viewModel.apparatus.leftDistanceM / MomentsLabState.halfBeamLengthM
                     let leftWeightPos = CGPoint(

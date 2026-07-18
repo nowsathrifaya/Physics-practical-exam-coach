@@ -924,6 +924,16 @@ private struct PracticalQuestionRow: View {
         }
     }
 
+    private var trimmedAnswer: String { answer.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    /// Same lightweight keyword-match philosophy as the final scoring in
+    /// `finishExperiment()` — mirrored here so feedback can show live per
+    /// question instead of only in the Stage 10 summary.
+    private var matchedKeyword: Bool {
+        let lower = trimmedAnswer.lowercased()
+        return question.modelAnswerKeywords.contains { lower.contains($0.lowercased()) }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(question.prompt).font(.subheadline.weight(.medium))
@@ -935,9 +945,29 @@ private struct PracticalQuestionRow: View {
             Text(marksLabel)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+
+            if !trimmedAnswer.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(
+                        matchedKeyword ? "Touches on the key point" : "Compare with the model answer below",
+                        systemImage: matchedKeyword ? "checkmark.circle.fill" : "exclamationmark.circle.fill"
+                    )
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(matchedKeyword ? .green : .orange)
+
+                    Text("Model answer: \(question.modelAnswer)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .transition(.opacity)
+            }
         }
         .padding(12)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .animation(.easeInOut(duration: 0.2), value: trimmedAnswer.isEmpty)
     }
 }
 
