@@ -274,6 +274,7 @@ private struct DialGaugeView: View {
             let center = CGPoint(x: size.width / 2, y: size.height * 0.85)
             let radius = min(size.width, size.height) * 0.7
 
+            LabCanvasHelpers.drawGaugeFace(context: context, center: center, radius: radius)
             LabCanvasHelpers.drawProtractorArc(context: context, center: center, radius: radius, startDeg: 180, endDeg: 360)
 
             let majorDivisions = 5
@@ -345,6 +346,10 @@ private struct JockeyWireView: View {
                 wire.move(to: CGPoint(x: leftX, y: wireY))
                 wire.addLine(to: CGPoint(x: leftX + wireWidth, y: wireY))
                 context.stroke(wire, with: .color(Color(hex: "#8B9997")), lineWidth: 4)
+                var wireHighlight = Path()
+                wireHighlight.move(to: CGPoint(x: leftX, y: wireY - 1.3))
+                wireHighlight.addLine(to: CGPoint(x: leftX + wireWidth, y: wireY - 1.3))
+                context.stroke(wireHighlight, with: .color(.white.opacity(0.4)), lineWidth: 1)
 
                 LabCanvasHelpers.drawLabel(context: context, text: "A", at: CGPoint(x: leftX - 4, y: wireY - 18), size: 12, weight: .bold)
                 LabCanvasHelpers.drawLabel(context: context, text: "B", at: CGPoint(x: leftX + wireWidth + 4, y: wireY - 18), size: 12, weight: .bold)
@@ -369,7 +374,12 @@ private struct JockeyWireView: View {
                 jockeyLead.move(to: CGPoint(x: jockeyX, y: wireY - 30))
                 jockeyLead.addLine(to: CGPoint(x: jockeyX, y: wireY))
                 context.stroke(jockeyLead, with: .color(Color(hex: "#D98B36")), lineWidth: 3)
-                context.fill(Path(ellipseIn: CGRect(x: jockeyX - 7, y: wireY - 38, width: 14, height: 14)), with: .color(Color(hex: "#D98B36")))
+                let knobRect = CGRect(x: jockeyX - 7, y: wireY - 38, width: 14, height: 14)
+                context.fill(
+                    Path(ellipseIn: knobRect),
+                    with: .radialGradient(Gradient(colors: [Color(hex: "#F2B36B"), Color(hex: "#D98B36")]), center: CGPoint(x: jockeyX - 3, y: wireY - 34), startRadius: 0, endRadius: 12)
+                )
+                context.stroke(Path(ellipseIn: knobRect), with: .color(.black.opacity(0.2)), lineWidth: 0.75)
 
                 LabCanvasHelpers.drawLabel(
                     context: context, text: String(format: "l = %.2f m", positionM),

@@ -210,9 +210,47 @@ struct DensityLabView: View {
 
             ZStack {
                 Canvas { context, _ in
+                    // Glass cylinder: a soft fill tint plus twin edge
+                    // highlights, rather than a flat outline, so it reads
+                    // as glass rather than a plain rectangle.
+                    context.fill(RoundedRectangle(cornerRadius: 6).path(in: cylinderRect), with: .color(ApparatusPalette.glassFillCyl.opacity(0.12)))
                     context.stroke(RoundedRectangle(cornerRadius: 6).path(in: cylinderRect), with: .color(.primary.opacity(0.4)), lineWidth: 2)
-                    let waterRect = CGRect(x: cylinderRect.minX, y: waterTop, width: cylinderRect.width, height: cylinderRect.maxY - waterTop)
-                    context.fill(RoundedRectangle(cornerRadius: 4).path(in: waterRect), with: .color(.blue.opacity(0.4)))
+                    var glassHighlight = Path()
+                    glassHighlight.move(to: CGPoint(x: cylinderRect.minX + 6, y: cylinderRect.minY + 6))
+                    glassHighlight.addLine(to: CGPoint(x: cylinderRect.minX + 6, y: cylinderRect.maxY - 6))
+                    context.stroke(glassHighlight, with: .color(.white.opacity(0.6)), lineWidth: 2)
+
+                    let waterRect = CGRect(x: cylinderRect.minX + 2, y: waterTop, width: cylinderRect.width - 4, height: cylinderRect.maxY - waterTop - 2)
+                    context.fill(
+                        RoundedRectangle(cornerRadius: 4).path(in: waterRect),
+                        with: .linearGradient(Gradient(colors: [Color.blue.opacity(0.5), Color.blue.opacity(0.28)]), startPoint: CGPoint(x: 0, y: waterRect.minY), endPoint: CGPoint(x: 0, y: waterRect.maxY))
+                    )
+                    // Meniscus: a shallow curve at the water surface instead
+                    // of a hard flat top edge.
+                    var meniscus = Path()
+                    meniscus.move(to: CGPoint(x: waterRect.minX, y: waterTop))
+                    meniscus.addQuadCurve(to: CGPoint(x: waterRect.maxX, y: waterTop), control: CGPoint(x: waterRect.midX, y: waterTop + 3))
+                    context.stroke(meniscus, with: .color(Color.blue.opacity(0.55)), lineWidth: 1.5)
+
+                    // Submerged object — a simple irregular stone shape, so
+                    // there's something visibly displacing the water rather
+                    // than the level just changing with nothing to explain it.
+                    if viewModel.apparatus.objectDropped {
+                        let objCenter = CGPoint(x: cylinderRect.midX, y: cylinderRect.maxY - 22)
+                        var stone = Path()
+                        stone.move(to: CGPoint(x: objCenter.x - 16, y: objCenter.y + 6))
+                        stone.addLine(to: CGPoint(x: objCenter.x - 10, y: objCenter.y - 12))
+                        stone.addLine(to: CGPoint(x: objCenter.x + 6, y: objCenter.y - 15))
+                        stone.addLine(to: CGPoint(x: objCenter.x + 17, y: objCenter.y - 2))
+                        stone.addLine(to: CGPoint(x: objCenter.x + 10, y: objCenter.y + 10))
+                        stone.addLine(to: CGPoint(x: objCenter.x - 6, y: objCenter.y + 12))
+                        stone.closeSubpath()
+                        context.fill(
+                            stone,
+                            with: .linearGradient(Gradient(colors: [ApparatusPalette.steelMid, ApparatusPalette.frame]), startPoint: CGPoint(x: objCenter.x, y: objCenter.y - 15), endPoint: CGPoint(x: objCenter.x, y: objCenter.y + 12))
+                        )
+                        context.stroke(stone, with: .color(ApparatusPalette.ink.opacity(0.5)), lineWidth: 1)
+                    }
 
                     LabCanvasHelpers.drawVerticalRuler(
                         context: context, originX: cylinderRect.minX - 8, topY: cylinderRect.minY,

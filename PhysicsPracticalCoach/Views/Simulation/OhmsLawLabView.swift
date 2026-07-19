@@ -267,6 +267,7 @@ private struct DialGaugeView: View {
             let center = CGPoint(x: size.width / 2, y: size.height * 0.85)
             let radius = min(size.width, size.height) * 0.7
 
+            LabCanvasHelpers.drawGaugeFace(context: context, center: center, radius: radius)
             LabCanvasHelpers.drawProtractorArc(context: context, center: center, radius: radius, startDeg: 180, endDeg: 360)
 
             // Numbered scale: 5 major divisions across the 180deg arc,

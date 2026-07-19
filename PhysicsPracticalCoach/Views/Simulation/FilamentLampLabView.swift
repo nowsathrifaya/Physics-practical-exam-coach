@@ -336,9 +336,14 @@ private struct FilamentDialGaugeView: View {
 
     var body: some View {
         Canvas { context, size in
-            let center = CGPoint(x: size.width / 2, y: size.height * 0.85)
-            let radius = min(size.width, size.height) * 0.7
+            // Same headroom fix as ResistanceWireLabView's DialGaugeView:
+            // pivot at 85% of height left no room for the label at
+            // `center.y + 18` to fit inside the canvas, so it was clipped
+            // and invisible at normal size.
+            let center = CGPoint(x: size.width / 2, y: size.height * 0.72)
+            let radius = min(size.width, size.height) * 0.58
 
+            LabCanvasHelpers.drawGaugeFace(context: context, center: center, radius: radius)
             LabCanvasHelpers.drawProtractorArc(context: context, center: center, radius: radius, startDeg: 180, endDeg: 360)
 
             let majorDivisions = 5
@@ -396,6 +401,36 @@ private struct FilamentBulbView: View {
             let bulbColor = Color(hex: "#F5C542").opacity(0.25 + clamped * 0.75)
             context.fill(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)), with: .color(bulbColor))
             context.stroke(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)), with: .color(Color(hex: "#8A6A1F")), lineWidth: 1.5)
+
+            // Filament coil inside the glass — a small zig-zag rather than
+            // leaving the bulb looking like a plain glowing disc.
+            var filament = Path()
+            let coilTurns = 4
+            let coilWidth = radius * 0.7
+            filament.move(to: CGPoint(x: center.x - coilWidth / 2, y: center.y + radius * 0.15))
+            for i in 0...coilTurns {
+                let t = CGFloat(i) / CGFloat(coilTurns)
+                let x = center.x - coilWidth / 2 + t * coilWidth
+                let y = center.y + radius * 0.15 + (i % 2 == 0 ? -6 : 6)
+                filament.addLine(to: CGPoint(x: x, y: y))
+            }
+            context.stroke(filament, with: .color(Color(hex: "#7A4A12").opacity(0.5 + clamped * 0.5)), lineWidth: clamped > 0.3 ? 1.8 : 1.2)
+
+            // Screw base beneath the bulb, so it reads as a light bulb
+            // rather than an abstract circle.
+            let baseWidth = radius * 0.9
+            let baseRect = CGRect(x: center.x - baseWidth / 2, y: center.y + radius * 0.72, width: baseWidth, height: radius * 0.55)
+            context.fill(
+                Path(roundedRect: baseRect, cornerRadius: 3),
+                with: .linearGradient(Gradient(colors: [ApparatusPalette.steelMid, ApparatusPalette.steelDark]), startPoint: CGPoint(x: baseRect.minX, y: 0), endPoint: CGPoint(x: baseRect.maxX, y: 0))
+            )
+            var threads = Path()
+            for i in 1..<4 {
+                let y = baseRect.minY + CGFloat(i) * baseRect.height / 4
+                threads.move(to: CGPoint(x: baseRect.minX, y: y))
+                threads.addLine(to: CGPoint(x: baseRect.maxX, y: y))
+            }
+            context.stroke(threads, with: .color(ApparatusPalette.steelDark), lineWidth: 1)
         }
     }
 }

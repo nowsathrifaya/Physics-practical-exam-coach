@@ -224,13 +224,18 @@ struct MomentsLabView: View {
 
             ZStack {
                 Canvas { context, _ in
-                    // Pivot triangle.
+                    // Pivot triangle — metal knife-edge wedge, shaded rather
+                    // than a flat silhouette.
                     var pivotShape = Path()
                     pivotShape.move(to: CGPoint(x: pivot.x, y: pivot.y))
                     pivotShape.addLine(to: CGPoint(x: pivot.x - 14, y: pivot.y + 24))
                     pivotShape.addLine(to: CGPoint(x: pivot.x + 14, y: pivot.y + 24))
                     pivotShape.closeSubpath()
-                    context.fill(pivotShape, with: .color(Color(hex: "#0F5A4F")))
+                    context.fill(
+                        pivotShape,
+                        with: .linearGradient(Gradient(colors: [ApparatusPalette.steelLight, ApparatusPalette.steelDark]), startPoint: CGPoint(x: pivot.x - 14, y: pivot.y), endPoint: CGPoint(x: pivot.x + 14, y: pivot.y + 24))
+                    )
+                    context.stroke(pivotShape, with: .color(ApparatusPalette.frame), lineWidth: 1)
 
                     // Beam, rotated by the live tilt around the pivot.
                     let angleRad = viewModel.apparatus.tiltDeg * .pi / 180
@@ -245,7 +250,19 @@ struct MomentsLabView: View {
                     var beam = Path()
                     beam.move(to: leftEnd)
                     beam.addLine(to: rightEnd)
-                    context.stroke(beam, with: .color(Color(hex: "#8B5E3C")), lineWidth: 8)
+                    context.stroke(beam, with: .color(Color(hex: "#6B4226")), lineWidth: 9)
+                    context.stroke(beam, with: .color(Color(hex: "#8B5E3C")), lineWidth: 7)
+
+                    // Highlight stripe along the top edge — offset
+                    // perpendicular to the beam's own tilt so it stays
+                    // correctly aligned as the beam rotates — the detail
+                    // that makes it read as a rounded wooden rule rather
+                    // than a flat painted bar.
+                    let perp = CGPoint(x: sin(angleRad) * 2.5, y: -cos(angleRad) * 2.5)
+                    var highlight = Path()
+                    highlight.move(to: CGPoint(x: leftEnd.x + perp.x, y: leftEnd.y + perp.y))
+                    highlight.addLine(to: CGPoint(x: rightEnd.x + perp.x, y: rightEnd.y + perp.y))
+                    context.stroke(highlight, with: .color(Color(hex: "#C9A27A").opacity(0.7)), lineWidth: 1.5)
 
                     // Scale marks printed along the beam itself — the beam
                     // *is* the metre rule in this experiment, so its

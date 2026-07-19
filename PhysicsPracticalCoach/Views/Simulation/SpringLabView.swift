@@ -207,19 +207,41 @@ struct SpringLabView: View {
                         heightPx: rulerBottom - restY, maxValue: 0.30, minorStep: 0.01
                     )
 
-                    // Spring: drawn as a zig-zag path from pivot to bottom hook.
-                    var spring = Path()
-                    spring.move(to: pivot)
-                    let coils = 10
-                    let coilWidth: CGFloat = 14
-                    for i in 0...coils {
-                        let t = CGFloat(i) / CGFloat(coils)
-                        let y = pivot.y + t * (bottomY - pivot.y)
-                        let x = pivot.x + (i % 2 == 0 ? -coilWidth : coilWidth)
-                        spring.addLine(to: CGPoint(x: x, y: y))
+                    // Retort stand clamp: a boss head gripping the spring at
+                    // the pivot, with a stub of the stand rod behind it —
+                    // gives the spring something believable to hang from
+                    // instead of floating from an invisible point.
+                    let clampRect = CGRect(x: pivot.x - 22, y: pivot.y - 14, width: 44, height: 16)
+                    context.fill(
+                        Path(roundedRect: clampRect, cornerRadius: 3),
+                        with: .linearGradient(Gradient(colors: [ApparatusPalette.steelLight, ApparatusPalette.steelMid]), startPoint: CGPoint(x: 0, y: clampRect.minY), endPoint: CGPoint(x: 0, y: clampRect.maxY))
+                    )
+                    context.stroke(Path(roundedRect: clampRect, cornerRadius: 3), with: .color(ApparatusPalette.steelDark), lineWidth: 1)
+                    context.fill(Path(CGRect(x: pivot.x + 18, y: pivot.y - 18, width: 5, height: 24)), with: .color(ApparatusPalette.steelDark))
+                    context.fill(Path(ellipseIn: CGRect(x: pivot.x - 3, y: pivot.y - 4, width: 6, height: 6)), with: .color(ApparatusPalette.frame))
+
+                    // Spring: real coils, not a zig-zag — each loop drawn as
+                    // an ellipse that widens and shades like metal wire
+                    // rather than a flat two-point-per-turn outline.
+                    let coils = 11
+                    let coilWidth: CGFloat = 15
+                    let coilHeight = max((bottomY - pivot.y) / CGFloat(coils), 3)
+                    var coilPaths = Path()
+                    for i in 0..<coils {
+                        let y = pivot.y + CGFloat(i) * coilHeight
+                        let loopRect = CGRect(x: pivot.x - coilWidth, y: y, width: coilWidth * 2, height: coilHeight * 1.15)
+                        coilPaths.addEllipse(in: loopRect)
                     }
-                    spring.addLine(to: CGPoint(x: pivot.x, y: bottomY))
-                    context.stroke(spring, with: .color(Color(hex: "#0F5A4F")), lineWidth: 2.5)
+                    context.stroke(coilPaths, with: .color(ApparatusPalette.steelDark), lineWidth: 1)
+                    context.stroke(
+                        coilPaths,
+                        with: .linearGradient(Gradient(colors: [ApparatusPalette.steelLight, ApparatusPalette.steelMid, ApparatusPalette.steelDark]), startPoint: CGPoint(x: pivot.x - coilWidth, y: 0), endPoint: CGPoint(x: pivot.x + coilWidth, y: 0)),
+                        lineWidth: 2.5
+                    )
+                    var centreWire = Path()
+                    centreWire.move(to: pivot)
+                    centreWire.addLine(to: CGPoint(x: pivot.x, y: bottomY))
+                    context.stroke(centreWire, with: .color(ApparatusPalette.steelDark.opacity(0.35)), lineWidth: 1)
 
                     // Pointer: a dashed line from the hook straight across to
                     // the ruler, plus an arrow at the ruler edge, so it's

@@ -297,6 +297,13 @@ struct LensLabView: View {
             let x: (Double) -> CGFloat = { cm in leftX + CGFloat(cm) * pxPerCm }
 
             Canvas { context, _ in
+                // Optical bench rail: a double line instead of a single
+                // stroke, suggesting an actual metal track rather than a
+                // flat drawn line.
+                var railTop = Path()
+                railTop.move(to: CGPoint(x: leftX, y: benchY - 2))
+                railTop.addLine(to: CGPoint(x: leftX + benchWidthPx, y: benchY - 2))
+                context.stroke(railTop, with: .color(Color(hex: "#C4CDCB")), lineWidth: 2)
                 var bench = Path()
                 bench.move(to: CGPoint(x: leftX, y: benchY))
                 bench.addLine(to: CGPoint(x: leftX + benchWidthPx, y: benchY))
@@ -311,8 +318,11 @@ struct LensLabView: View {
                     at: CGPoint(x: leftX + benchWidthPx / 2, y: benchY + 46), size: 10, color: .secondary
                 )
 
-                // Object: fixed upward arrow at the origin.
+                // Object: fixed upward arrow at the origin, standing on a
+                // small mount foot so it looks placed on the bench rather
+                // than floating above it.
                 let objX = x(lab.objectPositionCm)
+                context.fill(Path(roundedRect: CGRect(x: objX - 6, y: benchY - 2, width: 12, height: 5), cornerRadius: 1.5), with: .color(Color(hex: "#5A6664")))
                 var objectArrow = Path()
                 objectArrow.move(to: CGPoint(x: objX, y: benchY))
                 objectArrow.addLine(to: CGPoint(x: objX, y: benchY - 34))
@@ -324,8 +334,10 @@ struct LensLabView: View {
                 context.stroke(objHead, with: .color(Color(hex: "#D98B36")), lineWidth: 3)
                 LabCanvasHelpers.drawLabel(context: context, text: "Object", at: CGPoint(x: objX, y: benchY - 46), size: 10)
 
-                // Lens: vertical line with two convex arcs.
+                // Lens: vertical line with two convex arcs, also standing
+                // on its own mount foot on the rail.
                 let lensX = x(lab.lensPositionCm)
+                context.fill(Path(roundedRect: CGRect(x: lensX - 7, y: benchY - 2, width: 14, height: 5), cornerRadius: 1.5), with: .color(Color(hex: "#5A6664")))
                 var lensBody = Path()
                 lensBody.move(to: CGPoint(x: lensX, y: benchY - 44))
                 lensBody.addQuadCurve(to: CGPoint(x: lensX, y: benchY + 44), control: CGPoint(x: lensX + 10, y: benchY))

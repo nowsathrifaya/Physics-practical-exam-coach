@@ -332,6 +332,14 @@ final class GraphCoachPracticeViewModel {
     }
     var labelsOK: Bool { xLabelOK && yLabelOK }
 
+    /// Whether both axis label fields have something typed in, regardless
+    /// of whether it's the right word — gates Next; `labelsOK` (used for
+    /// checklist/grading) still requires the correct wording.
+    var labelsAttempted: Bool {
+        !xAxisLabelInput.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !yAxisLabelInput.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     var xUnitOK: Bool {
         def.xUnit.isEmpty || xUnitInput.trimmingCharacters(in: .whitespaces).lowercased() == def.xUnit.lowercased()
     }
@@ -339,6 +347,16 @@ final class GraphCoachPracticeViewModel {
         def.yUnit.isEmpty || yUnitInput.trimmingCharacters(in: .whitespaces).lowercased() == def.yUnit.lowercased()
     }
     var unitsOK: Bool { xUnitOK && yUnitOK }
+
+    /// Whether the student has put *something* in each unit field that
+    /// actually needs one — used to gate Next, separately from `unitsOK`
+    /// (used for grading/checklist feedback). A wrong unit is still a
+    /// mistake worth showing in the checklist, but it shouldn't trap the
+    /// student on this step the way an empty field should.
+    var unitsAttempted: Bool {
+        (def.xUnit.isEmpty || !xUnitInput.trimmingCharacters(in: .whitespaces).isEmpty) &&
+        (def.yUnit.isEmpty || !yUnitInput.trimmingCharacters(in: .whitespaces).isEmpty)
+    }
 
     var titleOK: Bool { !titleInput.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -366,6 +384,13 @@ final class GraphCoachPracticeViewModel {
         hypot((a.x - b.x) / max(axisMaxX, 0.001), (a.y - b.y) / max(axisMaxY, 0.001)) * max(axisMaxX, axisMaxY)
     }
     var plottingOK: Bool { plottedPoints.count >= dataset.points.count && plottingAccuracy >= 0.7 }
+
+    /// Whether every point has been placed, regardless of how accurate the
+    /// placement is — used to gate Next. Plotting inaccurately is still a
+    /// real mistake reflected in the checklist and final score, but it
+    /// shouldn't permanently block the student from moving on the way an
+    /// unplaced point should.
+    var plottingAttempted: Bool { plottedPoints.count >= dataset.points.count }
 
     /// How close the drawn line is to the true least-squares regression,
     /// measured as mean vertical distance at the data points' x-values.
@@ -400,9 +425,9 @@ final class GraphCoachPracticeViewModel {
     var currentStepComplete: Bool {
         switch currentStep {
         case 1: return scaleChosen
-        case 2: return labelsOK
-        case 3: return unitsOK && titleOK
-        case 4: return plottingOK
+        case 2: return labelsAttempted
+        case 3: return unitsAttempted && titleOK
+        case 4: return plottingAttempted
         case 5: return lineOK
         case 6: return gradientTriangleReady && !studentGradientInput.trimmingCharacters(in: .whitespaces).isEmpty
         default: return true
@@ -416,7 +441,7 @@ final class GraphCoachPracticeViewModel {
         case 1: return "Choose a scale to continue."
         case 2: return "Fill in both axis labels to continue."
         case 3: return "Fill in the units and title to continue."
-        case 4: return "Plot every point accurately to continue."
+        case 4: return "Plot all \(dataset.points.count) points to continue."
         case 5: return "Balance the best-fit line through the trend to continue."
         case 6: return "Tap two points on the line and enter your gradient to continue."
         default: return ""
@@ -872,22 +897,45 @@ private struct RawDataTableCard: View {
 
 private struct PlotStepView: View {
     let viewModel: GraphCoachPracticeViewModel
+    /// Zoom is a toggle into a larger, scrollable canvas — same pattern as
+    /// the dial gauges' "Zoom meters" — rather than a pinch gesture, since
+    /// a pinch/pan gesture layered on top of the existing tap-to-place and
+    /// drag-to-adjust-point gestures on this same canvas would risk the
+    /// two fighting over the same touch.
+    @State private var isZoomed = false
 
     var body: some View {
         StepCard(title: "Plot the data", subtitle: "Use the results table below — tap the grid to place each point, drag to fine-tune.") {
             VStack(alignment: .leading, spacing: 10) {
                 RawDataTableCard(definition: viewModel.graphType.definition, points: viewModel.dataset.points)
 
-                InteractivePlotCanvas(
-                    definition: viewModel.graphType.definition,
-                    axisMaxX: viewModel.axisMaxX,
-                    axisMaxY: viewModel.axisMaxY,
-                    scaleX: viewModel.selectedScaleX,
-                    scaleY: viewModel.selectedScaleY,
-                    targetCount: viewModel.dataset.points.count,
-                    points: Binding(get: { viewModel.plottedPoints }, set: { viewModel.plottedPoints = $0 })
-                )
+                GeometryReader { outerGeo in
+                    ScrollView([.horizontal, .vertical], showsIndicators: true) {
+                        InteractivePlotCanvas(
+                            definition: viewModel.graphType.definition,
+                            axisMaxX: viewModel.axisMaxX,
+                            axisMaxY: viewModel.axisMaxY,
+                            scaleX: viewModel.selectedScaleX,
+                            scaleY: viewModel.selectedScaleY,
+                            targetCount: viewModel.dataset.points.count,
+                            points: Binding(get: { viewModel.plottedPoints }, set: { viewModel.plottedPoints = $0 })
+                        )
+                        .frame(
+                            width: outerGeo.size.width * (isZoomed ? 2.2 : 1),
+                            height: outerGeo.size.height * (isZoomed ? 2.2 : 1)
+                        )
+                    }
+                }
                 .frame(height: 280)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { isZoomed.toggle() }
+                } label: {
+                    Label(isZoomed ? "Zoom out" : "Zoom in to plot precisely", systemImage: isZoomed ? "minus.magnifyingglass" : "plus.magnifyingglass")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
 
                 HStack {
                     Text("\(viewModel.plottedPoints.count) of \(viewModel.dataset.points.count) points placed")

@@ -440,6 +440,7 @@ private struct DialGaugeView: View {
             let center = CGPoint(x: size.width / 2, y: size.height * 0.72)
             let radius = min(size.width, size.height) * 0.58
 
+            LabCanvasHelpers.drawGaugeFace(context: context, center: center, radius: radius)
             LabCanvasHelpers.drawProtractorArc(context: context, center: center, radius: radius, startDeg: 180, endDeg: 360, minorTickStepDeg: 2)
 
             let majorDivisions = 5
@@ -535,6 +536,13 @@ private struct TestWireView: View {
                 activeWire.move(to: CGPoint(x: leftX, y: wireY))
                 activeWire.addLine(to: CGPoint(x: contactX, y: wireY))
                 context.stroke(activeWire, with: .color(Color(hex: "#C0392B")), lineWidth: 5)
+                // Thin highlight along the top edge of the wire — a small
+                // touch that reads as a rounded metal strand rather than a
+                // flat red bar.
+                var wireHighlight = Path()
+                wireHighlight.move(to: CGPoint(x: leftX, y: wireY - 1.5))
+                wireHighlight.addLine(to: CGPoint(x: contactX, y: wireY - 1.5))
+                context.stroke(wireHighlight, with: .color(.white.opacity(0.35)), lineWidth: 1)
                 LabCanvasHelpers.drawLabel(context: context, text: "Wire in circuit", at: CGPoint(x: leftX + (contactX - leftX) / 2, y: wireY + 14), size: 8, weight: .semibold, color: Color(hex: "#C0392B"))
 
                 LabCanvasHelpers.drawLabel(context: context, text: "A", at: CGPoint(x: leftX - 4, y: wireY - 18), size: 12, weight: .bold)
