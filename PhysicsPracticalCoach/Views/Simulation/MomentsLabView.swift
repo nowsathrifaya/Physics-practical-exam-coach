@@ -321,7 +321,7 @@ struct MomentsLabView: View {
 
                     LabCanvasHelpers.drawLabel(context: context, text: viewModel.givenLeftDescription, at: CGPoint(x: pivot.x, y: 16), size: 11)
                 }
-                .gesture(
+                .highPriorityGesture(
                     DragGesture()
                         .onChanged { value in
                             guard !viewModel.awaitingReading else { return }

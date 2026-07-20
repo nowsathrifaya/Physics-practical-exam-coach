@@ -23,6 +23,14 @@ enum LabCanvasHelpers {
     /// used for any experiment measuring a vertical length (pendulum string,
     /// spring extension, liquid depth). `maxValue`/`unit` label the ruler;
     /// `minorStep` is the value each small tick represents.
+    /// Formats a ruler value without unnecessary trailing zeros — "0.30"
+    /// stays as "0.3", "20" stays as "20", so labels read cleanly at any
+    /// step size from 0.01 m to 20 cm³.
+    private static func formatRulerValue(_ value: Double) -> String {
+        if value == value.rounded() { return String(Int(value)) }
+        return String(format: "%.2f", value).replacingOccurrences(of: #"0+$"#, with: "", options: .regularExpression).replacingOccurrences(of: #"\.$"#, with: "", options: .regularExpression)
+    }
+
     static func drawVerticalRuler(
         context: GraphicsContext,
         originX: CGFloat,
@@ -30,6 +38,7 @@ enum LabCanvasHelpers {
         heightPx: CGFloat,
         maxValue: Double,
         minorStep: Double,
+        unit: String = "",
         color: Color = Color(hex: "#8B9997")
     ) {
         var path = Path()
@@ -41,12 +50,20 @@ enum LabCanvasHelpers {
         while mark <= totalMarks {
             let fraction = CGFloat(mark) / CGFloat(totalMarks)
             let y = topY + fraction * heightPx
-            let tickLength: CGFloat = mark % 5 == 0 ? 16 : 8
+            let isMajor = mark % 5 == 0
+            let tickLength: CGFloat = isMajor ? 16 : 8
             path.move(to: CGPoint(x: originX - tickLength, y: y))
             path.addLine(to: CGPoint(x: originX, y: y))
+            if isMajor {
+                drawLabel(context: context, text: formatRulerValue(Double(mark) * minorStep), at: CGPoint(x: originX - tickLength - 15, y: y), size: 9, color: color)
+            }
             mark += 1
         }
         context.stroke(path, with: .color(color), lineWidth: 2)
+
+        if !unit.isEmpty {
+            drawLabel(context: context, text: "/ \(unit)", at: CGPoint(x: originX - 15, y: topY - 12), size: 9, weight: .semibold, color: color)
+        }
     }
 
     /// Draws a horizontal ruler with major ticks every 5th minor division,
@@ -59,6 +76,7 @@ enum LabCanvasHelpers {
         widthPx: CGFloat,
         maxValue: Double,
         minorStep: Double,
+        unit: String = "",
         color: Color = Color(hex: "#8B9997")
     ) {
         var path = Path()
@@ -70,12 +88,20 @@ enum LabCanvasHelpers {
         while mark <= totalMarks {
             let fraction = CGFloat(mark) / CGFloat(totalMarks)
             let x = leftX + fraction * widthPx
-            let tickLength: CGFloat = mark % 5 == 0 ? 16 : 8
+            let isMajor = mark % 5 == 0
+            let tickLength: CGFloat = isMajor ? 16 : 8
             path.move(to: CGPoint(x: x, y: originY))
             path.addLine(to: CGPoint(x: x, y: originY + tickLength))
+            if isMajor {
+                drawLabel(context: context, text: formatRulerValue(Double(mark) * minorStep), at: CGPoint(x: x, y: originY + tickLength + 10), size: 9, color: color)
+            }
             mark += 1
         }
         context.stroke(path, with: .color(color), lineWidth: 2)
+
+        if !unit.isEmpty {
+            drawLabel(context: context, text: "/ \(unit)", at: CGPoint(x: leftX + widthPx + 16, y: originY + 8), size: 9, weight: .semibold, color: color)
+        }
     }
 
     /// Draws a protractor-style arc with degree tick marks every 10 degrees,

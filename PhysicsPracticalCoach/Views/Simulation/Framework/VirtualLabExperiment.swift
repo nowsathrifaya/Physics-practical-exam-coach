@@ -23,6 +23,7 @@
 //
 
 import Foundation
+import CoreGraphics
 
 // MARK: - Static per-experiment configuration
 
@@ -77,6 +78,13 @@ protocol VirtualLabExperiment: Sendable {
 }
 
 extension VirtualLabExperiment {
+    /// Nil for every experiment by default — only circuit-based labs
+    /// override this. When present, Stage 3 shows the interactive circuit
+    /// assembly instead of the plain checklist.
+    var circuitWiringTask: CircuitWiringTask? { nil }
+}
+
+extension VirtualLabExperiment {
     /// Marks available for each stage, mirrored from the constants used in
     /// `VirtualLabWorkflowViewModel.finishExperiment()` — purely for the
     /// "marks throughout" display; the actual scoring logic lives in the
@@ -86,7 +94,73 @@ extension VirtualLabExperiment {
     var conclusionStageMarks: Int { 10 }
 }
 
-// MARK: - Stages
+// MARK: - Circuit wiring (Stage 3, for circuit-based experiments)
+
+/// One draggable circuit component chip — battery, switch, rheostat,
+/// ammeter, voltmeter, or the component under test (resistor/lamp).
+struct CircuitComponent: Identifiable, Hashable {
+    let id: String
+    let name: String
+    let systemImage: String
+}
+
+enum CircuitSlotKind {
+    /// Sits in the main current loop.
+    case series
+    /// A branch connected across another slot's two nodes, not carrying
+    /// the main loop current.
+    case parallel
+}
+
+/// One empty position on the schematic. `position` is a unit-square
+/// fraction (0...1 in both axes) of the canvas, so the same schematic
+/// layout can be reused at any canvas size.
+struct CircuitSlot: Identifiable {
+    let id: String
+    let kind: CircuitSlotKind
+    let correctComponentID: String
+    let position: CGPoint
+    /// Only set for `.parallel` slots — which series slot's two nodes this
+    /// branch connects across, purely for drawing the stub wire correctly.
+    let parallelAcrossSlotID: String?
+
+    init(id: String, kind: CircuitSlotKind, correctComponentID: String, position: CGPoint, parallelAcrossSlotID: String? = nil) {
+        self.id = id
+        self.kind = kind
+        self.correctComponentID = correctComponentID
+        self.position = position
+        self.parallelAcrossSlotID = parallelAcrossSlotID
+    }
+}
+
+/// A complete circuit-assembly task for Stage 3: the schematic slots plus
+/// the components to place into them. Optional on `VirtualLabExperiment` —
+/// only circuit-based labs (Ohm's Law, Filament Lamp, and later
+/// Resistance Wire/Potentiometer) provide one; everything else falls back
+/// to the plain checklist Set Up stage.
+struct CircuitWiringTask {
+    let components: [CircuitComponent]
+    let slots: [CircuitSlot]
+
+    /// Feedback for placing `componentID` into `slot` — uses the slot's
+    /// *kind*, not just "right or wrong," so a misplaced ammeter and a
+    /// misplaced voltmeter each get the specific, teachable message about
+    /// series vs parallel rather than a generic "incorrect."
+    func feedback(forPlacing componentID: String, into slot: CircuitSlot) -> (message: String, isCorrect: Bool) {
+        if componentID == slot.correctComponentID {
+            return ("Correct.", true)
+        }
+        if componentID == "ammeter" && slot.kind == .parallel {
+            return ("Ammeter must be connected in series.", false)
+        }
+        if componentID == "voltmeter" && slot.kind == .series {
+            return ("Voltmeter should be connected in parallel.", false)
+        }
+        let correctName = components.first { $0.id == slot.correctComponentID }?.name ?? "a different component"
+        return ("This position needs \(correctName), not that.", false)
+    }
+}
+
 
 enum LabExperimentStage: Int, CaseIterable, Identifiable {
     case introduction = 0

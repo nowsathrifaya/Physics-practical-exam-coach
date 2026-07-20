@@ -33,6 +33,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 // MARK: - 1. Apparatus state
 
@@ -143,6 +144,7 @@ final class VernierExperimentViewModel {
 
     func closeJaws() {
         SoundManager.shared.play(.measurement)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         apparatus.closeJaws()
     }
 
@@ -174,18 +176,56 @@ final class VernierExperimentViewModel {
         let perTrialCorrectCount = zip(readings, trueDiameters).filter { abs($0.value - $1) <= Self.perTrialToleranceCm }.count
 
         let trueMean = apparatus.trueMeanDiameterCm
-        let meanCorrect = abs(studentMean - trueMean) <= Self.meanToleranceCm
+        let meanError = abs(studentMean - trueMean)
+        let meanCorrect = meanError <= Self.meanToleranceCm
+
+        // Detailed breakdown instead of a single coarse 100/70/40 score —
+        // each dimension is graded and shown separately, so a student can
+        // see exactly *why* they lost marks rather than one flat number.
+        let measurementAccuracyScore = Int((Double(perTrialCorrectCount) / Double(VernierLabState.trialCount)) * 40)
+
+        let meanAccuracyScore: Int = {
+            if meanError <= Self.meanToleranceCm { return 35 }
+            if meanError <= Self.meanToleranceCm * 2 { return 18 }
+            return 0
+        }()
+
+        // Zero error correction can't be graded completely independently
+        // of the readings themselves (the app only sees the student's
+        // final, already-corrected value) — but a session with no zero
+        // error needs no correction at all, and getting 2+ individual
+        // readings right is only possible if the correction direction was
+        // applied correctly, so it's a reasonable proxy.
+        let zeroErrorScore: Int = {
+            if apparatus.zeroErrorHundredths == 0 { return 15 }
+            if perTrialCorrectCount >= 2 { return 15 }
+            if perTrialCorrectCount == 1 { return 7 }
+            return 0
+        }()
+
+        // Precision: did every reading actually use the vernier's 2 d.p.
+        // resolution, e.g. "2.34" not "2.3"?
+        let usedTwoDecimalPlaces = readings.allSatisfy { reading in
+            abs(reading.value * 100 - (reading.value * 100).rounded()) < 0.001
+        }
+        let precisionScore = usedTwoDecimalPlaces ? 10 : 0
+
+        let totalScore = measurementAccuracyScore + meanAccuracyScore + zeroErrorScore + precisionScore
 
         var feedback: [String] = []
         feedback.append("Zero error given: \(formatSigned(apparatus.zeroErrorCm)) cm \u{2014} \(apparatus.zeroErrorCm > 0 ? "subtract" : (apparatus.zeroErrorCm < 0 ? "add (subtracting a negative)" : "no correction needed")) from each raw scale reading.")
-        feedback.append("\(perTrialCorrectCount) of \(VernierLabState.trialCount) individual readings were within tolerance.")
         feedback.append("Your mean diameter: \(format(studentMean)) cm.")
         feedback.append("Accepted range: \(format(trueMean - Self.meanToleranceCm))\u{2013}\(format(trueMean + Self.meanToleranceCm)) cm.")
+        feedback.append("\u{2014}\u{2014}\u{2014} Score breakdown \u{2014}\u{2014}\u{2014}")
+        feedback.append("Measurement accuracy: \(measurementAccuracyScore)/40 (\(perTrialCorrectCount) of \(VernierLabState.trialCount) readings within tolerance)")
+        feedback.append("Mean accuracy: \(meanAccuracyScore)/35")
+        feedback.append("Zero error correction: \(zeroErrorScore)/15")
+        feedback.append("Precision (2 d.p.): \(precisionScore)/10")
 
         let correct = meanCorrect && perTrialCorrectCount >= 2
         let outcome = LabRunResult(
             correct: correct,
-            score: correct ? 100 : (meanCorrect ? 70 : 40),
+            score: totalScore,
             feedback: feedback,
             examTip: "Least count = 0.01 cm: main scale mark just before the vernier zero, plus the ONE vernier line that lines up exactly with a main-scale line \u{00D7} 0.01 cm. Always apply the given zero error \u{2014} subtract if positive, add if negative \u{2014} before averaging, and take at least 3 readings along the rod since it may not be perfectly uniform."
         )
@@ -238,29 +278,46 @@ struct VernierCaliperLabView: View {
 
     private var apparatusArea: some View {
         VStack(spacing: 12) {
-            if viewModel.apparatus.jawsClosed {
-                let components = viewModel.apparatus.currentObservedComponents
-                VernierCaliperCanvasView(
-                    mainScaleCm: components.mainScaleCm,
-                    vernierCoincidence: components.vernierCoincidence,
-                    zeroErrorCm: viewModel.apparatus.zeroErrorCm
-                )
-                .frame(height: 150)
-            } else {
-                VernierCaliperCanvasView(mainScaleCm: 8.0, vernierCoincidence: 0, zeroErrorCm: viewModel.apparatus.zeroErrorCm)
+            Group {
+                if viewModel.apparatus.jawsClosed {
+                    let components = viewModel.apparatus.currentObservedComponents
+                    VernierCaliperCanvasView(
+                        mainScaleCm: components.mainScaleCm,
+                        vernierCoincidence: components.vernierCoincidence,
+                        zeroErrorCm: viewModel.apparatus.zeroErrorCm
+                    )
                     .frame(height: 150)
-                    .opacity(0.55)
-                    .overlay(alignment: .top) {
-                        Text("Jaws open \u{2014} rod not yet gripped")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
+                    .accessibilityLabel("Vernier caliper, jaws closed on the rod")
+                    .accessibilityHint("Read the main scale and the coinciding vernier line to determine the diameter.")
+                } else {
+                    VernierCaliperCanvasView(mainScaleCm: 8.0, vernierCoincidence: 0, zeroErrorCm: viewModel.apparatus.zeroErrorCm)
+                        .frame(height: 150)
+                        .opacity(0.55)
+                        .overlay(alignment: .top) {
+                            Text("Jaws open \u{2014} rod not yet gripped")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .accessibilityLabel("Vernier caliper, jaws open, rod not yet gripped")
+                }
             }
+            // Real spring motion for the open-to-closed transition, instead
+            // of the scale diagram just swapping instantly.
+            .transition(.scale(scale: 0.94).combined(with: .opacity))
+            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: viewModel.apparatus.jawsClosed)
 
             if !viewModel.apparatus.jawsClosed && viewModel.readings.count < VernierLabState.trialCount {
                 DraggableJawSqueezeChip {
-                    viewModel.closeJaws()
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                        viewModel.closeJaws()
+                    }
                 }
+                .accessibilityLabel("Squeeze jaws shut")
+                .accessibilityHint("Closes the caliper's jaws on the rod so you can read the scale.")
+            }
+
+            if !viewModel.readings.isEmpty {
+                LiveAverageCard(readings: viewModel.readings)
             }
         }
         .padding(.top, 8)
@@ -268,12 +325,16 @@ struct VernierCaliperLabView: View {
 
     @ViewBuilder
     private var controls: some View {
+        TrialProgressView(completed: viewModel.readings.count, target: VernierLabState.trialCount)
+            .accessibilityLabel("Trial \(min(viewModel.readings.count + 1, VernierLabState.trialCount)) of \(VernierLabState.trialCount)")
+
         if viewModel.apparatus.jawsClosed && viewModel.readings.count < VernierLabState.trialCount {
             HStack {
                 TextField("Corrected diameter", text: $viewModel.readingInput)
                     .keyboardType(.decimalPad)
                     .textFieldStyle(.roundedBorder)
                     .focused($fieldFocused)
+                    .accessibilityLabel("Corrected diameter reading, in centimetres")
                 Text("cm").foregroundStyle(.secondary)
             }
             Button("Confirm reading") {
@@ -282,12 +343,14 @@ struct VernierCaliperLabView: View {
             }
             .buttonStyle(.borderedProminent)
             .frame(maxWidth: .infinity)
+            .accessibilityLabel("Confirm Vernier Reading")
         } else if viewModel.canCalculate && viewModel.result == nil {
             HStack {
                 TextField("Mean diameter", text: $viewModel.meanAnswerInput)
                     .keyboardType(.decimalPad)
                     .textFieldStyle(.roundedBorder)
                     .focused($fieldFocused)
+                    .accessibilityLabel("Mean diameter, in centimetres")
                 Text("cm").foregroundStyle(.secondary)
             }
             Button("Calculate result") {
@@ -296,13 +359,43 @@ struct VernierCaliperLabView: View {
             }
             .buttonStyle(.borderedProminent)
             .frame(maxWidth: .infinity)
+            .accessibilityLabel("Calculate Result")
         }
 
         if viewModel.result != nil {
             Button("New task") { viewModel.newTask() }
                 .buttonStyle(.bordered)
                 .frame(maxWidth: .infinity)
+                .accessibilityLabel("Start New Task")
         }
+    }
+}
+
+/// Live running average of the readings entered so far — the student
+/// still types the mean themselves, but seeing this updates as they go
+/// helps them catch an arithmetic slip before submitting, the same way a
+/// careful student would jot a running check on paper.
+private struct LiveAverageCard: View {
+    let readings: [LabReading]
+
+    private var average: Double { readings.map(\.value).reduce(0, +) / Double(readings.count) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(readings.enumerated()), id: \.offset) { index, reading in
+                Text("Reading \(index + 1): \(String(format: "%.2f", reading.value)) cm")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Text("Current average: \(String(format: "%.2f", average)) cm")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
 

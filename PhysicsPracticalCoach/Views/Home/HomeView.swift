@@ -33,6 +33,8 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 22) {
                 header
 
+                ExamCountdownCard()
+
                 ContinueLearningCard(homeViewModel: homeViewModel, profile: profile)
 
                 TodayProgressCard(progress: homeViewModel.todayProgress, streakDays: homeViewModel.userStats.streakDays)
@@ -466,6 +468,94 @@ private struct LearnHeroCard: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(Color.blue.opacity(0.25), lineWidth: 1.5)
         )
+    }
+}
+
+/// Shows "X days to go" once the student has set an exam date, or a CTA
+/// to set one if they haven't. Self-contained — reads/writes
+/// `ExamDateStore` directly and presents its own sheet to set the date,
+/// so it works from Home without needing to hop to Settings (which has
+/// the same control too, for anyone who prefers to set it there instead).
+private struct ExamCountdownCard: View {
+    @State private var examDate: Date?
+    @State private var showingPicker = false
+    @State private var draftDate: Date = Date()
+
+    private var daysRemaining: Int? { ExamDateStore.daysRemaining() }
+
+    var body: some View {
+        Button {
+            draftDate = examDate ?? Date()
+            showingPicker = true
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 26))
+                    .foregroundStyle(.white)
+                    .frame(width: 50, height: 50)
+                    .background(Color.orange.gradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    if let days = daysRemaining {
+                        Text(countdownHeadline(for: days)).font(.title3.bold()).foregroundStyle(.primary)
+                        Text("until your Physics Practical exam").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("Set your exam date").font(.title3.bold()).foregroundStyle(.primary)
+                        Text("See how many days you have left to prepare").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.orange.opacity(0.25), lineWidth: 1.5))
+        }
+        .buttonStyle(.plain)
+        .onAppear { examDate = ExamDateStore.get() }
+        .sheet(isPresented: $showingPicker) {
+            NavigationStack {
+                VStack(spacing: 20) {
+                    DatePicker("Exam date", selection: $draftDate, in: Date()..., displayedComponents: .date)
+                        .datePickerStyle(.graphical)
+                        .padding(.horizontal)
+
+                    if examDate != nil {
+                        Button("Clear exam date", role: .destructive) {
+                            ExamDateStore.set(nil)
+                            examDate = nil
+                            showingPicker = false
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.top)
+                .navigationTitle("Exam Countdown")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { showingPicker = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            ExamDateStore.set(draftDate)
+                            examDate = draftDate
+                            showingPicker = false
+                        }
+                        .fontWeight(.semibold)
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
+    }
+
+    private func countdownHeadline(for days: Int) -> String {
+        if days < 0 { return "Exam date has passed" }
+        if days == 0 { return "Exam is today — good luck!" }
+        if days == 1 { return "1 day to go" }
+        return "\(days) days to go"
     }
 }
 

@@ -49,10 +49,19 @@ final class FilamentLampLabState {
     /// resistance in circuit before winding it down.
     var rheostatFraction: Double = 1.0
 
+    /// Small, fixed-for-this-session reading uncertainty on each meter —
+    /// a real analogue needle never sits at a mathematically exact value.
+    /// Fixed per session (not re-randomised every frame) so it reads as
+    /// a believable calibration quirk rather than jittery flicker.
+    let ammeterJitterA: Double
+    let voltmeterJitterV: Double
+
     init(seed: Int) {
         var rng = SeededRandomNumberGenerator(seed: seed)
         coldResistanceOhm = ((rng.nextDouble(2.0, 4.0)) * 10).rounded() / 10
         tempCoefficient = coldResistanceOhm * 6.0
+        ammeterJitterA = rng.nextDouble(-0.01, 0.01)
+        voltmeterJitterV = rng.nextDouble(-0.1, 0.1)
     }
 
     private var rheostatOhm: Double { rheostatFraction * Self.rheostatMaxOhm }
@@ -169,8 +178,9 @@ final class FilamentLampExperimentViewModel {
 
         var feedback: [String] = []
         feedback.append("\(perReadingCorrectCount) of \(readings.count) voltmeter readings were within tolerance.")
-        feedback.append("R at your lowest current (\(format(minReading.value)) A): about \(format(expectedRLow)) \u{03A9}.")
-        feedback.append("R at your highest current (\(format(maxReading.value)) A): about \(format(expectedRHigh)) \u{03A9}.")
+        feedback.append("At low current (\(format(minReading.value)) A) the resistance was about \(format(expectedRLow)) \u{03A9}.")
+        feedback.append("At high current (\(format(maxReading.value)) A) it increased to about \(format(expectedRHigh)) \u{03A9}.")
+        feedback.append("This shows the filament got hotter as current increased, and therefore its resistance increased \u{2014} the defining sign of non-ohmic behaviour.")
         feedback.append("Your ratio: \(format(studentRatio)). Accepted range: \(format(expectedRatio - ratioTolerance))\u{2013}\(format(expectedRatio + ratioTolerance)).")
         if readings.count < 5 {
             feedback.append("Real exams expect at least 5 rheostat settings spread across the full range \u{2014} try recording more trials next time.")
@@ -203,8 +213,15 @@ final class FilamentLampExperimentViewModel {
     /// True ammeter/voltmeter readings the student should read off the
     /// dials right now — never shown as text, only rendered as needle
     /// positions, same "read it yourself" convention as Ohm's Law.
+    ///
+    /// Includes a small, fixed-per-session reading uncertainty (real
+    /// analogue meters never point at an exact value) so students learn
+    /// to estimate carefully rather than trust the needle to the last
+    /// digit. This only affects what's *displayed* — grading still checks
+    /// the student's typed values against each other (V = I x R(I)), so
+    /// this can't make an otherwise-correct reading fail.
     var currentTrueReadings: (currentA: Double, voltageV: Double) {
-        (apparatus.trueCurrentA, apparatus.trueVoltageV)
+        (apparatus.trueCurrentA + apparatus.ammeterJitterA, apparatus.trueVoltageV + apparatus.voltmeterJitterV)
     }
 
     func newTask() {
@@ -275,6 +292,10 @@ struct FilamentLampLabView: View {
     @ViewBuilder
     private var controls: some View {
         if viewModel.result == nil {
+            Text("\(viewModel.readings.count)/5 readings")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(viewModel.readings.count >= 5 ? .green : .secondary)
+
             HStack {
                 TextField("Ammeter reading", text: $viewModel.ammeterInput)
                     .keyboardType(.decimalPad)
@@ -289,12 +310,16 @@ struct FilamentLampLabView: View {
                     .focused($focusedField, equals: .voltmeter)
                 Text("V").foregroundStyle(.secondary)
             }
-            Button("Record reading") {
+            Button("Save Reading") {
                 focusedField = nil
                 viewModel.recordReading()
             }
             .buttonStyle(.borderedProminent)
             .frame(maxWidth: .infinity)
+
+            if !viewModel.readings.isEmpty {
+                ResistanceReadingsTable(readings: viewModel.readings)
+            }
 
             if viewModel.canCalculate {
                 HStack {
@@ -304,7 +329,7 @@ struct FilamentLampLabView: View {
                         .focused($focusedField, equals: .ratio)
                     Text("ratio").foregroundStyle(.secondary)
                 }
-                Button("Calculate result") {
+                Button("Evaluate Practical") {
                     focusedField = nil
                     viewModel.calculateResult()
                 }
@@ -322,6 +347,41 @@ struct FilamentLampLabView: View {
                 .buttonStyle(.bordered)
                 .frame(maxWidth: .infinity)
         }
+    }
+}
+
+/// Live resistance table — shows R = V/I for each recorded reading as it
+/// comes in, styled like the results table on a real exam paper, so
+/// students can see resistance climbing with current *before* they reach
+/// the final ratio calculation, rather than only finding out at the end.
+private struct ResistanceReadingsTable: View {
+    let readings: [LabReading]
+
+    private func format(_ value: Double) -> String { String(format: "%.2f", value) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 4) {
+                GridRow {
+                    Text("I (A)").font(.caption.weight(.bold))
+                    Text("V (V)").font(.caption.weight(.bold))
+                    Text("R = V/I (\u{03A9})").font(.caption.weight(.bold))
+                }
+                Divider().gridCellColumns(3)
+                ForEach(readings) { reading in
+                    if let v = reading.derivedValue, reading.value > 0 {
+                        GridRow {
+                            Text(format(reading.value)).font(.caption)
+                            Text(format(v)).font(.caption)
+                            Text(format(v / reading.value)).font(.caption.weight(.semibold))
+                        }
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -385,25 +445,59 @@ private struct FilamentBulbView: View {
     /// 0...1 fraction of maximum current.
     let brightness: Double
 
+    /// Approximates a filament's thermal colour ramp — dull red at low
+    /// current, through orange and yellow, to white-hot at maximum —
+    /// rather than a single fixed yellow that only changes in opacity.
+    /// This is the actual physics cue: a hotter filament doesn't just
+    /// glow "brighter yellow," its colour temperature genuinely shifts.
+    private static func filamentColor(for t: Double) -> Color {
+        let stops: [(Double, Double, Double, Double)] = [
+            (0.0, 0.23, 0.06, 0.04),   // near-dark red, barely glowing
+            (0.25, 0.60, 0.12, 0.07),  // dull red
+            (0.5, 0.88, 0.40, 0.11),   // orange
+            (0.75, 0.96, 0.77, 0.26),  // yellow
+            (1.0, 1.0, 0.95, 0.77)     // white-yellow, hottest
+        ]
+        let clamped = max(0, min(1, t))
+        var lower = stops[0]
+        var upper = stops[stops.count - 1]
+        for i in 0..<stops.count - 1 {
+            if clamped >= stops[i].0 && clamped <= stops[i + 1].0 {
+                lower = stops[i]
+                upper = stops[i + 1]
+                break
+            }
+        }
+        let span = upper.0 - lower.0
+        let localT = span > 0 ? (clamped - lower.0) / span : 0
+        let r = lower.1 + (upper.1 - lower.1) * localT
+        let g = lower.2 + (upper.2 - lower.2) * localT
+        let b = lower.3 + (upper.3 - lower.3) * localT
+        return Color(red: r, green: g, blue: b)
+    }
+
     var body: some View {
         Canvas { context, size in
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
             let radius = size.height * 0.45
             let clamped = max(0, min(1, brightness))
+            let thermalColor = Self.filamentColor(for: clamped)
 
             if clamped > 0.05 {
                 let glowRadius = radius * (1.4 + clamped * 1.8)
                 context.fill(
                     Path(ellipseIn: CGRect(x: center.x - glowRadius, y: center.y - glowRadius, width: glowRadius * 2, height: glowRadius * 2)),
-                    with: .color(Color(hex: "#F5C542").opacity(clamped * 0.35))
+                    with: .color(thermalColor.opacity(clamped * 0.35))
                 )
             }
-            let bulbColor = Color(hex: "#F5C542").opacity(0.25 + clamped * 0.75)
+            let bulbColor = thermalColor.opacity(0.25 + clamped * 0.75)
             context.fill(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)), with: .color(bulbColor))
             context.stroke(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)), with: .color(Color(hex: "#8A6A1F")), lineWidth: 1.5)
 
             // Filament coil inside the glass — a small zig-zag rather than
-            // leaving the bulb looking like a plain glowing disc.
+            // leaving the bulb looking like a plain glowing disc. Coloured
+            // by the same thermal ramp as the glow, so a low-current
+            // filament genuinely looks dark/dull-red rather than just dim.
             var filament = Path()
             let coilTurns = 4
             let coilWidth = radius * 0.7
@@ -414,7 +508,7 @@ private struct FilamentBulbView: View {
                 let y = center.y + radius * 0.15 + (i % 2 == 0 ? -6 : 6)
                 filament.addLine(to: CGPoint(x: x, y: y))
             }
-            context.stroke(filament, with: .color(Color(hex: "#7A4A12").opacity(0.5 + clamped * 0.5)), lineWidth: clamped > 0.3 ? 1.8 : 1.2)
+            context.stroke(filament, with: .color(thermalColor), lineWidth: clamped > 0.3 ? 1.8 : 1.2)
 
             // Screw base beneath the bulb, so it reads as a light bulb
             // rather than an abstract circle.
@@ -456,7 +550,7 @@ private struct FilamentRheostatSliderView: View {
                     .fill(Color(hex: "#0F5A4F"))
                     .frame(width: 28, height: 28)
                     .position(x: knobX, y: geo.size.height / 2)
-                    .gesture(
+                    .highPriorityGesture(
                         DragGesture()
                             .onChanged { value in
                                 let newX = min(max(value.location.x, 16), 16 + trackWidth)

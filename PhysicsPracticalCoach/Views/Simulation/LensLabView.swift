@@ -311,10 +311,10 @@ struct LensLabView: View {
 
                 LabCanvasHelpers.drawHorizontalRuler(
                     context: context, originY: benchY + 8, leftX: leftX, widthPx: benchWidthPx,
-                    maxValue: LensLabState.benchLengthCm, minorStep: 5
+                    maxValue: LensLabState.benchLengthCm, minorStep: 5, unit: "cm"
                 )
                 LabCanvasHelpers.drawLabel(
-                    context: context, text: "distance along bench / cm",
+                    context: context, text: "distance along bench",
                     at: CGPoint(x: leftX + benchWidthPx / 2, y: benchY + 46), size: 10, color: .secondary
                 )
 

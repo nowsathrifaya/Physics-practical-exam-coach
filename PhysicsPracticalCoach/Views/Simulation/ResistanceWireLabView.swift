@@ -290,7 +290,6 @@ struct ResistanceWireLabView: View {
     let curriculum: Curriculum
     @State private var viewModel: ResistanceWireExperimentViewModel
     @FocusState private var focusedField: Field?
-    @State private var isZoomed = false
 
     private enum Field { case ammeter, voltmeter }
 
@@ -308,7 +307,7 @@ struct ResistanceWireLabView: View {
         LabScaffoldView(
             title: "Resistance Wire Lab",
             instructionText: viewModel.instructionText,
-            apparatusHeight: isZoomed ? 420 : 360,
+            apparatusHeight: 360,
             readings: viewModel.readings,
             result: viewModel.result,
             apparatus: { apparatusArea },
@@ -338,7 +337,7 @@ struct ResistanceWireLabView: View {
                     DialGaugeView(label: "A", value: readings.currentA, maxValue: 1.0)
                     DialGaugeView(label: "V", value: readings.voltageV, maxValue: 3.0)
                 }
-                .frame(height: isZoomed ? 150 : 100)
+                .frame(height: 100)
 
                 TestWireView(
                     testLengthM: Binding(
@@ -357,14 +356,7 @@ struct ResistanceWireLabView: View {
     @ViewBuilder
     private var controls: some View {
         if viewModel.result == nil {
-            HStack {
-                TrialProgressView(completed: viewModel.readings.count, target: ResistanceWireExperimentViewModel.minRecommendedTrials)
-                Spacer()
-                Button(isZoomed ? "\u{1F50D} Zoom out" : "\u{1F50D} Zoom meters") {
-                    withAnimation { isZoomed.toggle() }
-                }
-                .font(.caption)
-            }
+            TrialProgressView(completed: viewModel.readings.count, target: ResistanceWireExperimentViewModel.minRecommendedTrials)
 
             if let hint = viewModel.setupSpreadHint {
                 Text(hint)
@@ -550,18 +542,9 @@ private struct TestWireView: View {
 
                 LabCanvasHelpers.drawHorizontalRuler(
                     context: context, originY: wireY + 26, leftX: leftX, widthPx: wireWidth,
-                    maxValue: wireLengthM * 100, minorStep: 5
+                    maxValue: wireLengthM * 100, minorStep: 5, unit: "cm"
                 )
-                var cm = 0
-                let totalCm = Int(wireLengthM * 100)
-                while cm <= totalCm {
-                    if cm % 20 == 0 {
-                        let x = leftX + CGFloat(Double(cm) / Double(totalCm)) * wireWidth
-                        LabCanvasHelpers.drawLabel(context: context, text: "\(cm)", at: CGPoint(x: x, y: wireY + 50), size: 9)
-                    }
-                    cm += 5
-                }
-                LabCanvasHelpers.drawLabel(context: context, text: "length in circuit / cm", at: CGPoint(x: leftX + wireWidth / 2, y: wireY + 66), size: 10, color: .secondary)
+                LabCanvasHelpers.drawLabel(context: context, text: "length in circuit", at: CGPoint(x: leftX + wireWidth / 2, y: wireY + 58), size: 10, color: .secondary)
 
                 // Voltmeter, drawn as a shallow loop genuinely spanning the
                 // active length in parallel, rather than implied only by a
@@ -597,7 +580,7 @@ private struct TestWireView: View {
                 LabCanvasHelpers.drawLabel(context: context, text: "Sliding contact", at: CGPoint(x: contactX, y: wireY - 26), size: 8, color: .secondary)
             }
             .contentShape(Rectangle())
-            .gesture(
+            .highPriorityGesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         let clampedX = min(max(value.location.x, leftX), leftX + wireWidth)

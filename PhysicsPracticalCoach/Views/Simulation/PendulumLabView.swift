@@ -305,7 +305,7 @@ struct PendulumLabView: View {
                     if lab.phase == .settingLength {
                         LabCanvasHelpers.drawVerticalRuler(
                             context: context, originX: pivot.x - 70, topY: pivot.y,
-                            heightPx: maxPendulumPx, maxValue: 1.5, minorStep: 0.1
+                            heightPx: maxPendulumPx, maxValue: 1.5, minorStep: 0.1, unit: "m"
                         )
                     }
 

@@ -204,7 +204,7 @@ struct SpringLabView: View {
                 Canvas { context, _ in
                     LabCanvasHelpers.drawVerticalRuler(
                         context: context, originX: pivot.x + 60, topY: restY,
-                        heightPx: rulerBottom - restY, maxValue: 0.30, minorStep: 0.01
+                        heightPx: rulerBottom - restY, maxValue: 0.30, minorStep: 0.01, unit: "m"
                     )
 
                     // Retort stand clamp: a boss head gripping the spring at

@@ -69,7 +69,11 @@ struct VirtualLabWorkflowView<CoreContent: View>: View {
         case .collectApparatus:
             CollectApparatusStageView(viewModel: viewModel)
         case .setUp:
-            SetUpStageView(viewModel: viewModel)
+            if viewModel.experiment.circuitWiringTask != nil {
+                CircuitWiringStageView(viewModel: viewModel)
+            } else {
+                SetUpStageView(viewModel: viewModel)
+            }
         case .coreExperiment:
             coreContent()
         case .practicalQuestions:

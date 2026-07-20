@@ -13,6 +13,8 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var showResetConfirmation = false
     @State private var soundEffectsEnabled = true
+    @State private var examDate: Date?
+    @State private var isEditingExamDate = false
 
     var body: some View {
         List {
@@ -27,6 +29,46 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+            }
+
+            Section {
+                if isEditingExamDate {
+                    DatePicker(
+                        "Exam date",
+                        selection: Binding(get: { examDate ?? Date() }, set: { examDate = $0 }),
+                        in: Date()...,
+                        displayedComponents: .date
+                    )
+                    HStack {
+                        Button("Cancel") { isEditingExamDate = false; examDate = ExamDateStore.get() }
+                        Spacer()
+                        Button("Save") {
+                            ExamDateStore.set(examDate)
+                            isEditingExamDate = false
+                        }
+                        .fontWeight(.semibold)
+                    }
+                } else if let examDate {
+                    HStack {
+                        Text("Exam date")
+                        Spacer()
+                        Text(examDate.formatted(date: .abbreviated, time: .omitted)).foregroundStyle(.secondary)
+                    }
+                    .onTapGesture { isEditingExamDate = true }
+                    Button("Clear exam date", role: .destructive) {
+                        ExamDateStore.set(nil)
+                        self.examDate = nil
+                    }
+                } else {
+                    Button("Set exam date") {
+                        examDate = Date()
+                        isEditingExamDate = true
+                    }
+                }
+            } header: {
+                Text("Exam Countdown")
+            } footer: {
+                Text("Set this once and Home will show how many days you have left to prepare.")
             }
 
             Section("Feedback") {
@@ -59,6 +101,7 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .onAppear {
             soundEffectsEnabled = SoundManager.shared.isEnabled
+            examDate = ExamDateStore.get()
         }
         .alert("Reset all progress?", isPresented: $showResetConfirmation) {
             Button("Cancel", role: .cancel) {}

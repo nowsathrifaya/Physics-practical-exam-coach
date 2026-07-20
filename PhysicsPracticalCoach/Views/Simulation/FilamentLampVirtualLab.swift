@@ -86,6 +86,25 @@ struct FilamentLampVirtualLabExperiment: VirtualLabExperiment {
         "The lamp's resistance is completely independent of current.",
     ]
     let correctConclusionIndex = 0
+
+    // Square loop — one fewer series component than Ohm's Law since this
+    // experiment's apparatus list has no switch.
+    let circuitWiringTask: CircuitWiringTask? = CircuitWiringTask(
+        components: [
+            CircuitComponent(id: "cell", name: "Battery", systemImage: "battery.100"),
+            CircuitComponent(id: "rheostat", name: "Rheostat", systemImage: "slider.horizontal.3"),
+            CircuitComponent(id: "ammeter", name: "Ammeter", systemImage: "gauge.with.needle"),
+            CircuitComponent(id: "voltmeter", name: "Voltmeter", systemImage: "gauge.with.needle.fill"),
+            CircuitComponent(id: "lamp", name: "Filament lamp", systemImage: "lightbulb.fill"),
+        ],
+        slots: [
+            CircuitSlot(id: "cell", kind: .series, correctComponentID: "cell", position: CGPoint(x: 0.5, y: 0.15)),
+            CircuitSlot(id: "ammeter", kind: .series, correctComponentID: "ammeter", position: CGPoint(x: 0.86, y: 0.5)),
+            CircuitSlot(id: "lamp", kind: .series, correctComponentID: "lamp", position: CGPoint(x: 0.5, y: 0.85)),
+            CircuitSlot(id: "rheostat", kind: .series, correctComponentID: "rheostat", position: CGPoint(x: 0.14, y: 0.5)),
+            CircuitSlot(id: "voltmeter", kind: .parallel, correctComponentID: "voltmeter", position: CGPoint(x: 0.5, y: 0.66), parallelAcrossSlotID: "lamp"),
+        ]
+    )
 }
 
 struct FilamentLampVirtualLabView: View {

@@ -69,6 +69,14 @@ final class OhmsLawExperimentViewModel {
     private static let ammeterTolerance = 0.03 // A
     private static let voltmeterTolerance = 0.1 // V
 
+    /// Feedback on the most recently recorded reading, compared against
+    /// the true dial values at the moment it was recorded. The tolerance
+    /// constants above existed but were never actually checked anywhere —
+    /// meaning a reading could be typed in with no relation to what the
+    /// dials showed and nothing would flag it, unlike every other
+    /// apparatus in the app.
+    private(set) var lastReadingNote: (text: String, isGood: Bool)?
+
     /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
     /// once after `calculateResult()` sets `result`. Nil by default, so
     /// existing standalone `OhmsLawLabView` usage behaves exactly as before;
@@ -91,6 +99,20 @@ final class OhmsLawExperimentViewModel {
         else { return }
 
         SoundManager.shared.play(.measurement)
+        let ammeterOff = abs(ammeterValue - apparatus.trueCurrentA)
+        let voltmeterOff = abs(voltmeterValue - apparatus.trueVoltageV)
+        let ammeterGood = ammeterOff <= Self.ammeterTolerance
+        let voltmeterGood = voltmeterOff <= Self.voltmeterTolerance
+        if ammeterGood && voltmeterGood {
+            lastReadingNote = ("Good reading.", true)
+        } else if !ammeterGood && !voltmeterGood {
+            lastReadingNote = ("Check both the ammeter and voltmeter readings against the dials.", false)
+        } else if !ammeterGood {
+            lastReadingNote = ("Check the ammeter reading against the dial.", false)
+        } else {
+            lastReadingNote = ("Check the voltmeter reading against the dial.", false)
+        }
+
         readings.append(LabReading(
             trialNumber: readings.count + 1,
             label: "Current I", value: (ammeterValue * 1000).rounded() / 1000, unit: "A",
@@ -234,6 +256,12 @@ struct OhmsLawLabView: View {
             .buttonStyle(.borderedProminent)
             .frame(maxWidth: .infinity)
 
+            if let note = viewModel.lastReadingNote {
+                Label(note.text, systemImage: note.isGood ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(note.isGood ? .green : .orange)
+            }
+
             if viewModel.canCalculate {
                 Button("Calculate resistance R") { viewModel.calculateResult() }
                     .buttonStyle(.bordered)
@@ -264,8 +292,12 @@ private struct DialGaugeView: View {
 
     var body: some View {
         Canvas { context, size in
-            let center = CGPoint(x: size.width / 2, y: size.height * 0.85)
-            let radius = min(size.width, size.height) * 0.7
+            // Same fix as the other Dial Gauge copies (Resistance Wire,
+            // Filament Lamp): pivot at 72%, not 85%, of the canvas height,
+            // so there's real headroom below it for the "A"/"V" label
+            // instead of it being crammed against the very bottom edge.
+            let center = CGPoint(x: size.width / 2, y: size.height * 0.72)
+            let radius = min(size.width, size.height) * 0.58
 
             LabCanvasHelpers.drawGaugeFace(context: context, center: center, radius: radius)
             LabCanvasHelpers.drawProtractorArc(context: context, center: center, radius: radius, startDeg: 180, endDeg: 360)
@@ -324,7 +356,7 @@ private struct RheostatSliderView: View {
                     .fill(Color(hex: "#0F5A4F"))
                     .frame(width: 28, height: 28)
                     .position(x: knobX, y: geo.size.height / 2)
-                    .gesture(
+                    .highPriorityGesture(
                         DragGesture()
                             .onChanged { value in
                                 let newX = min(max(value.location.x, 16), 16 + trackWidth)

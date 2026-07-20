@@ -254,7 +254,7 @@ struct DensityLabView: View {
 
                     LabCanvasHelpers.drawVerticalRuler(
                         context: context, originX: cylinderRect.minX - 8, topY: cylinderRect.minY,
-                        heightPx: cylinderRect.height, maxValue: maxCm3, minorStep: 5
+                        heightPx: cylinderRect.height, maxValue: maxCm3, minorStep: 5, unit: "cm³"
                     )
 
                     LabCanvasHelpers.drawLabel(
@@ -341,7 +341,7 @@ private struct DraggableObjectChip: View {
             .fill(Color(hex: "#8B5E3C"))
             .frame(width: 34, height: 34)
             .offset(dragOffset)
-            .gesture(
+            .highPriorityGesture(
                 DragGesture()
                     .onChanged { value in dragOffset = value.translation }
                     .onEnded { value in

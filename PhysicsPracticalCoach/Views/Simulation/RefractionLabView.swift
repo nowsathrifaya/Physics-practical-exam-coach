@@ -88,14 +88,20 @@ final class RefractionLabState {
 
     /// Locks in the chosen angle and reveals the refracted ray + protractor
     /// — matches placing the exit pins and then measuring the trace.
+    /// When the refracted ray started revealing — drives a ~0.6s
+    /// grow-in animation instead of the ray just snapping into place.
+    private(set) var refractionRevealStart: Date?
+
     func lockIncidence() {
         phase = .readingRefraction
+        refractionRevealStart = Date()
     }
 
     /// Re-arms for another trial at a (potentially) new incidence angle —
     /// matches a real practical: reposition the pins, then re-measure.
     func rearmForNextTrial() {
         phase = .settingIncidence
+        refractionRevealStart = nil
     }
 }
 
@@ -214,7 +220,7 @@ final class RefractionExperimentViewModel {
         let spreadCorrect = spread >= Self.minIncidenceSpreadDeg
 
         var feedback: [String] = []
-        feedback.append("Your refractive index from the graph gradient: \(format(studentN)).")
+        feedback.append("Gradient = \(format(studentN))  \u{2192}  n = \(format(studentN))")
         feedback.append("Accepted range: \(format(apparatus.refractiveIndex - tolerance))\u{2013}\(format(apparatus.refractiveIndex + tolerance)).")
         if !nCorrect {
             feedback.append("A gradient far from the accepted range usually means one or more angles of refraction were misread \u{2014} check your protractor readings.")
@@ -286,6 +292,22 @@ final class RefractionExperimentViewModel {
 
 // MARK: - View
 
+/// Draws a small optical-pin marker (a teardrop + head, like a map pin)
+/// with a letter label beside it — a recognition cue so the diagram reads
+/// as "the pins experiment" at a glance, even though the app doesn't use
+/// the pins themselves for any calculation.
+private func drawPin(context: GraphicsContext, at point: CGPoint, label: String, color: Color) {
+    var pin = Path()
+    pin.addEllipse(in: CGRect(x: point.x - 3.5, y: point.y - 3.5, width: 7, height: 7))
+    pin.move(to: CGPoint(x: point.x - 2.5, y: point.y + 2.5))
+    pin.addLine(to: CGPoint(x: point.x, y: point.y + 9))
+    pin.addLine(to: CGPoint(x: point.x + 2.5, y: point.y + 2.5))
+    pin.closeSubpath()
+    context.fill(pin, with: .color(color))
+    context.stroke(pin, with: .color(.white.opacity(0.8)), lineWidth: 0.75)
+    LabCanvasHelpers.drawLabel(context: context, text: label, at: CGPoint(x: point.x + 10, y: point.y - 2), size: 9, weight: .bold, color: color)
+}
+
 struct RefractionLabView: View {
     let curriculum: Curriculum
     @State private var viewModel: RefractionExperimentViewModel
@@ -323,30 +345,54 @@ struct RefractionLabView: View {
             let protractorRadius = min(geo.size.width, geo.size.height) * 0.3 * zoom
             let lab = viewModel.apparatus
 
-            Canvas { context, size in
-                // Glass block: light-blue, semi-transparent, with a subtle
-                // top highlight and border so it reads as glass rather than
-                // a flat filled rectangle.
-                let blockRect = CGRect(x: 0, y: originPoint.y, width: size.width, height: size.height - originPoint.y)
-                context.fill(
-                    Path(blockRect),
-                    with: .linearGradient(
-                        Gradient(colors: [Color(hex: "#BFE3F2").opacity(0.38), Color(hex: "#8FCBE8").opacity(0.20)]),
-                        startPoint: CGPoint(x: 0, y: originPoint.y),
-                        endPoint: CGPoint(x: 0, y: size.height)
-                    )
+            TimelineView(.animation) { timeline in
+                Canvas { context, size in
+                // Glass block: a bounded rectangle (not a full-width fill)
+                // with visible side edges, a soft drop shadow, and a
+                // diagonal glossy streak — reads as a physical object
+                // sitting on the bench rather than a flat colour region.
+                let blockMargin: CGFloat = size.width * 0.08
+                let blockRect = CGRect(
+                    x: blockMargin, y: originPoint.y,
+                    width: size.width - blockMargin * 2, height: size.height - originPoint.y - 4
                 )
+                context.drawLayer { ctx in
+                    ctx.addFilter(.shadow(color: .black.opacity(0.22), radius: 6, x: 0, y: 4))
+                    ctx.fill(
+                        RoundedRectangle(cornerRadius: 6).path(in: blockRect),
+                        with: .linearGradient(
+                            Gradient(colors: [Color(hex: "#BFE3F2").opacity(0.55), Color(hex: "#8FCBE8").opacity(0.30)]),
+                            startPoint: CGPoint(x: 0, y: blockRect.minY),
+                            endPoint: CGPoint(x: 0, y: blockRect.maxY)
+                        )
+                    )
+                }
+                context.stroke(RoundedRectangle(cornerRadius: 6).path(in: blockRect), with: .color(Color(hex: "#5B9BB5").opacity(0.6)), lineWidth: 1.5)
+
+                // Glossy diagonal streak, clipped to the block — the detail
+                // that reads as "glass" rather than "tinted plastic."
+                context.drawLayer { ctx in
+                    ctx.clip(to: RoundedRectangle(cornerRadius: 6).path(in: blockRect))
+                    var streak = Path()
+                    streak.move(to: CGPoint(x: blockRect.minX + blockRect.width * 0.12, y: blockRect.minY))
+                    streak.addLine(to: CGPoint(x: blockRect.minX + blockRect.width * 0.32, y: blockRect.minY))
+                    streak.addLine(to: CGPoint(x: blockRect.minX + blockRect.width * 0.14, y: blockRect.maxY))
+                    streak.addLine(to: CGPoint(x: blockRect.minX + blockRect.width * 0.02, y: blockRect.maxY))
+                    streak.closeSubpath()
+                    ctx.fill(streak, with: .color(.white.opacity(0.28)))
+                }
+
                 var highlight = Path()
-                highlight.move(to: CGPoint(x: 0, y: originPoint.y + 3))
-                highlight.addLine(to: CGPoint(x: size.width, y: originPoint.y + 3))
+                highlight.move(to: CGPoint(x: blockRect.minX, y: originPoint.y + 3))
+                highlight.addLine(to: CGPoint(x: blockRect.maxX, y: originPoint.y + 3))
                 context.stroke(highlight, with: .color(.white.opacity(0.5)), lineWidth: 1.5)
 
                 var surface = Path()
-                surface.move(to: CGPoint(x: 0, y: originPoint.y))
-                surface.addLine(to: CGPoint(x: size.width, y: originPoint.y))
+                surface.move(to: CGPoint(x: blockRect.minX, y: originPoint.y))
+                surface.addLine(to: CGPoint(x: blockRect.maxX, y: originPoint.y))
                 context.stroke(surface, with: .color(Color(hex: "#5B6B69")), lineWidth: 2)
-                LabCanvasHelpers.drawLabel(context: context, text: "Air", at: CGPoint(x: size.width - 30, y: originPoint.y - 16), size: 10, color: .secondary)
-                LabCanvasHelpers.drawLabel(context: context, text: "Glass", at: CGPoint(x: size.width - 34, y: originPoint.y + 18), size: 10, color: .secondary)
+                LabCanvasHelpers.drawLabel(context: context, text: "Air", at: CGPoint(x: blockRect.maxX - 22, y: originPoint.y - 16), size: 10, color: .secondary)
+                LabCanvasHelpers.drawLabel(context: context, text: "Glass", at: CGPoint(x: blockRect.maxX - 26, y: originPoint.y + 18), size: 10, color: .secondary)
 
                 // Normal: dashed vertical line through the point of incidence O.
                 var normal = Path()
@@ -382,43 +428,68 @@ struct RefractionLabView: View {
                     LabCanvasHelpers.drawWeight(context: context, center: pointA, radiusPx: 9, color: Color(hex: "#C0392B"))
                 }
 
+                // Optical pins A and B along the incident ray — the actual
+                // apparatus a real practical uses to fix the ray's path,
+                // even though the app already knows the angle exactly.
+                // Purely a recognition cue: "this is the optical pins
+                // experiment," not something the student interacts with.
+                drawPin(context: context, at: CGPoint(x: pointA.x + (originPoint.x - pointA.x) * 0.28, y: pointA.y + (originPoint.y - pointA.y) * 0.28), label: "A", color: Color(hex: "#C0392B"))
+                drawPin(context: context, at: CGPoint(x: pointA.x + (originPoint.x - pointA.x) * 0.72, y: pointA.y + (originPoint.y - pointA.y) * 0.72), label: "B", color: Color(hex: "#C0392B"))
+
                 // Refracted ray + protractor: revealed only once the student
                 // has locked their angle of incidence and moved to reading.
                 if lab.phase == .readingRefraction {
+                    // Grow the ray in over ~0.6s rather than snapping it
+                    // into place instantly — "red ray touches the
+                    // surface, green ray bends into view."
+                    let elapsed = lab.refractionRevealStart.map { timeline.date.timeIntervalSince($0) } ?? 1
+                    let revealProgress = min(1, max(0, elapsed / 0.6))
+
                     let rRad = lab.trueRefractionDeg * .pi / 180
                     let pointB = CGPoint(
                         x: originPoint.x + refractedRayLength * CGFloat(sin(rRad)),
                         y: originPoint.y + refractedRayLength * CGFloat(cos(rRad))
                     )
+                    let animatedPointB = CGPoint(
+                        x: originPoint.x + (pointB.x - originPoint.x) * CGFloat(revealProgress),
+                        y: originPoint.y + (pointB.y - originPoint.y) * CGFloat(revealProgress)
+                    )
                     var refractedRay = Path()
                     refractedRay.move(to: originPoint)
-                    refractedRay.addLine(to: pointB)
+                    refractedRay.addLine(to: animatedPointB)
                     context.stroke(refractedRay, with: .color(Color(hex: "#2E7D32")), lineWidth: 3)
 
-                    LabCanvasHelpers.drawAngleIndicatorArc(
-                        context: context, center: originPoint, radius: 22 * zoom,
-                        startDeg: 90 - lab.trueRefractionDeg, endDeg: 90,
-                        color: Color(hex: "#2E7D32"), label: "r"
-                    )
+                    if revealProgress > 0.7 {
+                        LabCanvasHelpers.drawAngleIndicatorArc(
+                            context: context, center: originPoint, radius: 22 * zoom,
+                            startDeg: 90 - lab.trueRefractionDeg, endDeg: 90,
+                            color: Color(hex: "#2E7D32"), label: "r"
+                        )
 
-                    LabCanvasHelpers.drawProtractorArc(
-                        context: context, center: originPoint, radius: protractorRadius,
-                        startDeg: 190, endDeg: 350, color: Color(hex: "#8B9997"),
-                        minorTickStepDeg: 5
-                    )
+                        LabCanvasHelpers.drawProtractorArc(
+                            context: context, center: originPoint, radius: protractorRadius,
+                            startDeg: 190, endDeg: 350, color: Color(hex: "#8B9997"),
+                            minorTickStepDeg: 5
+                        )
 
-                    var deg = 190.0
-                    while deg <= 350 {
-                        if Int(deg) % 10 == 0 {
-                            let rad = deg * .pi / 180
-                            let labelPoint = CGPoint(
-                                x: originPoint.x + (protractorRadius + 15) * CGFloat(cos(rad)),
-                                y: originPoint.y + (protractorRadius + 15) * CGFloat(sin(rad))
-                            )
-                            let valueFromNormal = Int(abs(deg - 270).rounded())
-                            LabCanvasHelpers.drawLabel(context: context, text: "\(valueFromNormal)\u{00B0}", at: labelPoint, size: 8 * zoom, color: .secondary)
+                        var deg = 190.0
+                        while deg <= 350 {
+                            if Int(deg) % 10 == 0 {
+                                let rad = deg * .pi / 180
+                                let labelPoint = CGPoint(
+                                    x: originPoint.x + (protractorRadius + 15) * CGFloat(cos(rad)),
+                                    y: originPoint.y + (protractorRadius + 15) * CGFloat(sin(rad))
+                                )
+                                let valueFromNormal = Int(abs(deg - 270).rounded())
+                                LabCanvasHelpers.drawLabel(context: context, text: "\(valueFromNormal)\u{00B0}", at: labelPoint, size: 8 * zoom, color: .secondary)
+                            }
+                            deg += 5
                         }
-                        deg += 5
+
+                        // Optical pins C and D along the refracted ray,
+                        // matching pins A/B on the incident ray.
+                        drawPin(context: context, at: CGPoint(x: originPoint.x + (pointB.x - originPoint.x) * 0.35, y: originPoint.y + (pointB.y - originPoint.y) * 0.35), label: "C", color: Color(hex: "#2E7D32"))
+                        drawPin(context: context, at: CGPoint(x: originPoint.x + (pointB.x - originPoint.x) * 0.78, y: originPoint.y + (pointB.y - originPoint.y) * 0.78), label: "D", color: Color(hex: "#2E7D32"))
                     }
                 }
 
@@ -427,6 +498,7 @@ struct RefractionLabView: View {
                 // marks it.
                 LabCanvasHelpers.drawWeight(context: context, center: originPoint, radiusPx: 3.5, color: .primary)
                 LabCanvasHelpers.drawLabel(context: context, text: "O", at: CGPoint(x: originPoint.x - 14, y: originPoint.y + 12), size: 12, weight: .bold)
+                }
             }
             .contentShape(Rectangle())
             .highPriorityGesture(
@@ -434,8 +506,13 @@ struct RefractionLabView: View {
                     .onChanged { value in
                         guard lab.phase == .settingIncidence else { return }
                         let dx = Double(value.location.x - originPoint.x)
-                        let dy = Double(originPoint.y - value.location.y)
-                        guard dy > 1 else { return }
+                        // Previously bailed out entirely (no response at
+                        // all) for any touch at or below the point of
+                        // incidence — a large dead zone across the lower
+                        // half of the board where dragging did nothing.
+                        // Clamp instead, so every touch on the board
+                        // produces a sensible angle rather than silence.
+                        let dy = max(Double(originPoint.y - value.location.y), 1)
                         let angle = atan2(dx, dy) * 180 / .pi
                         viewModel.setIncidence(rawAngleDeg: angle)
                     }
@@ -456,7 +533,7 @@ struct RefractionLabView: View {
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
-            Button("Confirm angle \u{2014} trace the refracted ray") { viewModel.confirmIncidence() }
+            Button("Trace Ray") { viewModel.confirmIncidence() }
                 .buttonStyle(.borderedProminent)
                 .frame(maxWidth: .infinity)
         case .readingRefraction:
@@ -483,7 +560,7 @@ struct RefractionLabView: View {
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
-                Button("Record trial") {
+                Button("Save Reading") {
                     readingFieldFocused = false
                     viewModel.recordReading()
                 }
@@ -493,7 +570,7 @@ struct RefractionLabView: View {
         }
 
         if viewModel.canCalculate && viewModel.result == nil {
-            Button("Calculate refractive index n") { viewModel.calculateResult() }
+            Button("Plot Graph & Calculate n") { viewModel.calculateResult() }
                 .buttonStyle(.bordered)
                 .frame(maxWidth: .infinity)
         }

@@ -356,18 +356,9 @@ private struct JockeyWireView: View {
 
                 LabCanvasHelpers.drawHorizontalRuler(
                     context: context, originY: wireY + 10, leftX: leftX, widthPx: wireWidth,
-                    maxValue: wireLengthM * 100, minorStep: 5
+                    maxValue: wireLengthM * 100, minorStep: 5, unit: "cm"
                 )
-                var cm = 0
-                let totalCm = Int(wireLengthM * 100)
-                while cm <= totalCm {
-                    if cm % 20 == 0 {
-                        let x = leftX + CGFloat(Double(cm) / Double(totalCm)) * wireWidth
-                        LabCanvasHelpers.drawLabel(context: context, text: "\(cm)", at: CGPoint(x: x, y: wireY + 34), size: 9)
-                    }
-                    cm += 5
-                }
-                LabCanvasHelpers.drawLabel(context: context, text: "length along wire / cm", at: CGPoint(x: leftX + wireWidth / 2, y: wireY + 52), size: 10, color: .secondary)
+                LabCanvasHelpers.drawLabel(context: context, text: "length along wire", at: CGPoint(x: leftX + wireWidth / 2, y: wireY + 42), size: 10, color: .secondary)
 
                 // Jockey probe: a vertical lead down to the wire with a wiper knob on top.
                 var jockeyLead = Path()
@@ -387,7 +378,7 @@ private struct JockeyWireView: View {
                 )
             }
             .contentShape(Rectangle())
-            .gesture(
+            .highPriorityGesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         let clampedX = min(max(value.location.x, leftX), leftX + wireWidth)

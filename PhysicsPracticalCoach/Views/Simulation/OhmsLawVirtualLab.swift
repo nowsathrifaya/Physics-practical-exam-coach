@@ -91,6 +91,27 @@ struct OhmsLawVirtualLabExperiment: VirtualLabExperiment {
         "Voltage depends only on the length of the connecting wires.",
     ]
     let correctConclusionIndex = 0
+
+    // Pentagon loop, same component ids/icons as `apparatusItems` above so
+    // the shelf chips match what the student already met in Stage 2.
+    let circuitWiringTask: CircuitWiringTask? = CircuitWiringTask(
+        components: [
+            CircuitComponent(id: "cell", name: "Battery", systemImage: "battery.100"),
+            CircuitComponent(id: "switch", name: "Switch", systemImage: "power"),
+            CircuitComponent(id: "rheostat", name: "Rheostat", systemImage: "slider.horizontal.3"),
+            CircuitComponent(id: "ammeter", name: "Ammeter", systemImage: "gauge.with.needle"),
+            CircuitComponent(id: "voltmeter", name: "Voltmeter", systemImage: "gauge.with.needle.fill"),
+            CircuitComponent(id: "resistor", name: "Resistor", systemImage: "poweroutlet.type.b.fill"),
+        ],
+        slots: [
+            CircuitSlot(id: "cell", kind: .series, correctComponentID: "cell", position: CGPoint(x: 0.5, y: 0.15)),
+            CircuitSlot(id: "switch", kind: .series, correctComponentID: "switch", position: CGPoint(x: 0.86, y: 0.39)),
+            CircuitSlot(id: "ammeter", kind: .series, correctComponentID: "ammeter", position: CGPoint(x: 0.72, y: 0.78)),
+            CircuitSlot(id: "resistor", kind: .series, correctComponentID: "resistor", position: CGPoint(x: 0.28, y: 0.78)),
+            CircuitSlot(id: "rheostat", kind: .series, correctComponentID: "rheostat", position: CGPoint(x: 0.14, y: 0.39)),
+            CircuitSlot(id: "voltmeter", kind: .parallel, correctComponentID: "voltmeter", position: CGPoint(x: 0.5, y: 0.62), parallelAcrossSlotID: "resistor"),
+        ]
+    )
 }
 
 struct OhmsLawVirtualLabView: View {
