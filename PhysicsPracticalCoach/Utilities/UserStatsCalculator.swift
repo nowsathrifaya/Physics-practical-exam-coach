@@ -168,7 +168,7 @@ struct TodayProgress {
     /// one attempt (any curriculum) on that day.
     let weekActivity: [Bool]
 
-    nonisolated(unsafe) static let empty = TodayProgress(
+    static let empty = TodayProgress(
         dailyGoalPercent: 0, experimentsToday: 0, apparatusToday: 0, xpToday: 0,
         weekActivity: Array(repeating: false, count: 7)
     )
