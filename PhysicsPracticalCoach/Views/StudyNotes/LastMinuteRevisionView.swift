@@ -99,6 +99,32 @@ enum LastMinuteRevisionBank {
         "A burette reads 0 at the TOP and 50 at the BOTTOM \u{2014} the opposite way round to a measuring cylinder.",
         "Read any meniscus at eye level, from its lowest point for water-based liquids, to avoid parallax."
     ]
+
+    /// A final, ultra-compressed page meant to be re-read many times in
+    /// the last minutes before the exam — distinct from `highYieldNotes`
+    /// above (which explain *why*), this is pure checklist recall.
+    static let top20: [String] = [
+        "Always use pencil for graphs and diagrams.",
+        "Circle any anomalous point clearly.",
+        "Use a ruler for the best-fit line \u{2014} never freehand.",
+        "Units go in table/axis headings only, never repeated in the data.",
+        "Draw the gradient triangle as large as the line allows.",
+        "Read every scale at eye level to avoid parallax.",
+        "Take repeat readings and average them.",
+        "Gradient comes from TWO POINTS ON THE BEST-FIT LINE \u{2014} never from two plotted data points.",
+        "State and apply the zero error before writing your final reading.",
+        "Record to the precision the instrument allows \u{2014} never round early.",
+        "A suitable scale fills more than half the grid in both directions.",
+        "Join points with one best-fit line or smooth curve \u{2014} never point-to-point.",
+        "Take at least 6 sets of readings across a sensible range.",
+        "Match significant figures to your least precise measurement.",
+        "Keep every other variable constant except the one being investigated.",
+        "Give a precaution specific to this experiment, not \u{201C}be careful.\u{201D}",
+        "Convert stopwatch mm:ss.t readings to total seconds before calculating.",
+        "Write conclusions as a relationship statement, not just \u{201C}it worked.\u{201D}",
+        "Double-check the range on a dual-range meter before reading it.",
+        "Let thermometers and liquids reach equilibrium before reading."
+    ]
 }
 
 struct LastMinuteRevisionView: View {
@@ -107,7 +133,8 @@ struct LastMinuteRevisionView: View {
     private let formulas = LastMinuteRevisionBank.formulas
     private let noteChunks = LastMinuteRevisionBank.highYieldNotes.chunked(into: 3)
 
-    private var totalPages: Int { formulas.count + noteChunks.count }
+    /// +1 for the final "Top 20 Things to Remember" page.
+    private var totalPages: Int { formulas.count + noteChunks.count + 1 }
 
     var body: some View {
         PagedReaderView(
@@ -115,16 +142,20 @@ struct LastMinuteRevisionView: View {
             pageLabel: { i in
                 if i < formulas.count {
                     return "Formula \(i + 1) of \(formulas.count)"
-                } else {
+                } else if i < formulas.count + noteChunks.count {
                     let chunkIndex = i - formulas.count
                     return "High-Yield Rules \(chunkIndex + 1) of \(noteChunks.count)"
+                } else {
+                    return "Top 20 Things to Remember"
                 }
             },
             page: { i in
                 if i < formulas.count {
                     FormulaPage(item: formulas[i])
-                } else {
+                } else if i < formulas.count + noteChunks.count {
                     HighYieldPage(notes: noteChunks[i - formulas.count])
+                } else {
+                    Top20Page()
                 }
             },
             onFinished: { dismiss() },
@@ -132,6 +163,29 @@ struct LastMinuteRevisionView: View {
         )
         .navigationTitle("Last Minute Revision")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct Top20Page: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Top 20 Things to Remember").font(.title2.bold())
+            Text("The last page to check before you walk in.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(LastMinuteRevisionBank.top20.enumerated()), id: \.offset) { _, item in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("\u{2705}").font(.subheadline)
+                        Text(item).font(.subheadline)
+                    }
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
     }
 }
 
