@@ -23,9 +23,6 @@ struct PagedReaderView<Page: View>: View {
     /// the button on the last page (nothing further to do).
     var onFinished: (() -> Void)? = nil
     var finishedLabel: String = "Done"
-    /// Fires whenever the visible page changes (swipe or Back/Next) — used
-    /// by Study Notes to remember where a student left off.
-    var onPageChanged: ((Int) -> Void)? = nil
 
     @State private var index: Int
 
@@ -35,8 +32,7 @@ struct PagedReaderView<Page: View>: View {
         pageLabel: @escaping (Int) -> String,
         @ViewBuilder page: @escaping (Int) -> Page,
         onFinished: (() -> Void)? = nil,
-        finishedLabel: String = "Done",
-        onPageChanged: ((Int) -> Void)? = nil
+        finishedLabel: String = "Done"
     ) {
         self.pageCount = pageCount
         self.initialIndex = initialIndex
@@ -44,7 +40,6 @@ struct PagedReaderView<Page: View>: View {
         self.page = page
         self.onFinished = onFinished
         self.finishedLabel = finishedLabel
-        self.onPageChanged = onPageChanged
         _index = State(initialValue: min(max(initialIndex, 0), max(pageCount - 1, 0)))
     }
 
@@ -71,22 +66,13 @@ struct PagedReaderView<Page: View>: View {
             footer
         }
         .background(Color(.systemGroupedBackground))
-        .onChange(of: index) { _, newValue in onPageChanged?(newValue) }
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(pageCount == 0 ? "" : pageLabel(index))
-                    .font(.headline)
-                Spacer()
-                if let remaining = estimatedMinutesRemaining {
-                    Text(remaining <= 1 ? "~1 min left" : "~\(remaining) min left")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(pageCount == 0 ? "" : pageLabel(index))
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color(.tertiarySystemFill)).frame(height: 5)
@@ -99,16 +85,6 @@ struct PagedReaderView<Page: View>: View {
         .padding(.horizontal, 20)
         .padding(.top, 14)
         .padding(.bottom, 10)
-    }
-
-    /// Rough reading-time estimate for the remaining pages — ~25 seconds
-    /// per page, which is a reasonable pace for these short note/technique
-    /// pages. Nil once there's nothing left, so the label just disappears
-    /// on the last page rather than showing "0 min left."
-    private var estimatedMinutesRemaining: Int? {
-        let remainingPages = pageCount - (index + 1)
-        guard remainingPages > 0 else { return nil }
-        return max(1, Int((Double(remainingPages) * 25.0 / 60.0).rounded(.up)))
     }
 
     private var progress: CGFloat {

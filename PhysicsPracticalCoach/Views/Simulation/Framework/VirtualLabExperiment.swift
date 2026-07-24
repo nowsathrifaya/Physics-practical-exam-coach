@@ -23,7 +23,6 @@
 //
 
 import Foundation
-import CoreGraphics
 
 // MARK: - Static per-experiment configuration
 
@@ -39,7 +38,7 @@ struct LabApparatusItem: Identifiable, Hashable {
     /// Shown once correctly placed, describing the assembly action for
     /// Stage 3 (e.g. "Attach the string to the clamp.").
     let setUpInstruction: String
-    /// Shown in the info sheet (\u{2139}\u{fe0f} button on each apparatus card) —
+    /// Shown in the info sheet (\u2139\ufe0f button on each apparatus card) —
     /// revision-style facts about the instrument itself. Defaulted to empty
     /// so existing call sites compile unchanged; experiments can fill these
     /// in for genuine measuring instruments (rulers, stopwatches) where
@@ -78,13 +77,6 @@ protocol VirtualLabExperiment: Sendable {
 }
 
 extension VirtualLabExperiment {
-    /// Nil for every experiment by default — only circuit-based labs
-    /// override this. When present, Stage 3 shows the interactive circuit
-    /// assembly instead of the plain checklist.
-    var circuitWiringTask: CircuitWiringTask? { nil }
-}
-
-extension VirtualLabExperiment {
     /// Marks available for each stage, mirrored from the constants used in
     /// `VirtualLabWorkflowViewModel.finishExperiment()` — purely for the
     /// "marks throughout" display; the actual scoring logic lives in the
@@ -94,73 +86,7 @@ extension VirtualLabExperiment {
     var conclusionStageMarks: Int { 10 }
 }
 
-// MARK: - Circuit wiring (Stage 3, for circuit-based experiments)
-
-/// One draggable circuit component chip — battery, switch, rheostat,
-/// ammeter, voltmeter, or the component under test (resistor/lamp).
-struct CircuitComponent: Identifiable, Hashable {
-    let id: String
-    let name: String
-    let systemImage: String
-}
-
-enum CircuitSlotKind {
-    /// Sits in the main current loop.
-    case series
-    /// A branch connected across another slot's two nodes, not carrying
-    /// the main loop current.
-    case parallel
-}
-
-/// One empty position on the schematic. `position` is a unit-square
-/// fraction (0...1 in both axes) of the canvas, so the same schematic
-/// layout can be reused at any canvas size.
-struct CircuitSlot: Identifiable {
-    let id: String
-    let kind: CircuitSlotKind
-    let correctComponentID: String
-    let position: CGPoint
-    /// Only set for `.parallel` slots — which series slot's two nodes this
-    /// branch connects across, purely for drawing the stub wire correctly.
-    let parallelAcrossSlotID: String?
-
-    init(id: String, kind: CircuitSlotKind, correctComponentID: String, position: CGPoint, parallelAcrossSlotID: String? = nil) {
-        self.id = id
-        self.kind = kind
-        self.correctComponentID = correctComponentID
-        self.position = position
-        self.parallelAcrossSlotID = parallelAcrossSlotID
-    }
-}
-
-/// A complete circuit-assembly task for Stage 3: the schematic slots plus
-/// the components to place into them. Optional on `VirtualLabExperiment` —
-/// only circuit-based labs (Ohm's Law, Filament Lamp, and later
-/// Resistance Wire/Potentiometer) provide one; everything else falls back
-/// to the plain checklist Set Up stage.
-struct CircuitWiringTask {
-    let components: [CircuitComponent]
-    let slots: [CircuitSlot]
-
-    /// Feedback for placing `componentID` into `slot` — uses the slot's
-    /// *kind*, not just "right or wrong," so a misplaced ammeter and a
-    /// misplaced voltmeter each get the specific, teachable message about
-    /// series vs parallel rather than a generic "incorrect."
-    func feedback(forPlacing componentID: String, into slot: CircuitSlot) -> (message: String, isCorrect: Bool) {
-        if componentID == slot.correctComponentID {
-            return ("Correct.", true)
-        }
-        if componentID == "ammeter" && slot.kind == .parallel {
-            return ("Ammeter must be connected in series.", false)
-        }
-        if componentID == "voltmeter" && slot.kind == .series {
-            return ("Voltmeter should be connected in parallel.", false)
-        }
-        let correctName = components.first { $0.id == slot.correctComponentID }?.name ?? "a different component"
-        return ("This position needs \(correctName), not that.", false)
-    }
-}
-
+// MARK: - Stages
 
 enum LabExperimentStage: Int, CaseIterable, Identifiable {
     case introduction = 0
@@ -275,7 +201,6 @@ final class VirtualLabWorkflowViewModel {
     var allApparatusPlaced: Bool { placedApparatus.count == experiment.apparatusItems.count }
 
     func startExperiment() {
-        SoundManager.shared.play(.tap)
         stage = .collectApparatus
     }
 
@@ -286,21 +211,17 @@ final class VirtualLabWorkflowViewModel {
         if isCorrectDrop {
             placedApparatus.insert(item.id)
             apparatusHint = nil
-            SoundManager.shared.play(.success)
         } else {
             apparatusHint = item.placementHint
-            SoundManager.shared.play(.error)
         }
     }
 
     func proceedToSetUp() {
         guard allApparatusPlaced else { return }
-        SoundManager.shared.play(.tap)
         stage = .setUp
     }
 
     func proceedToCoreExperiment() {
-        SoundManager.shared.play(.tap)
         stage = .coreExperiment
     }
 
@@ -310,7 +231,6 @@ final class VirtualLabWorkflowViewModel {
     /// that result was calculated.
     func coreExperimentFinished(_ result: LabRunResult) {
         coreResult = result
-        SoundManager.shared.play(result.correct ? .success : .tap)
         stage = .practicalQuestions
     }
 
@@ -319,12 +239,10 @@ final class VirtualLabWorkflowViewModel {
     }
 
     func proceedToConclusion() {
-        SoundManager.shared.play(.tap)
         stage = .conclusion
     }
 
     func selectConclusion(_ index: Int) {
-        SoundManager.shared.play(.tap)
         conclusionSelection = index
     }
 
@@ -386,13 +304,11 @@ final class VirtualLabWorkflowViewModel {
             examTip: experiment.theory
         )
         finalResult = outcome
-        SoundManager.shared.play(outcome.correct ? .complete : .error)
         stage = .results
         recorder.record(experimentTitle: experiment.title, result: outcome, maxScore: 100)
     }
 
     func viewExaminerFeedback() {
-        SoundManager.shared.play(.tap)
         stage = .examinerFeedback
     }
 
@@ -413,7 +329,6 @@ final class VirtualLabWorkflowViewModel {
     }
 
     func restart() {
-        SoundManager.shared.play(.tap)
         stage = .introduction
         placedApparatus = []
         apparatusHint = nil

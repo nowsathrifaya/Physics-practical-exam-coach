@@ -60,7 +60,8 @@ enum CurriculumProfiles {
         simulations: [
             .pendulum, .springExtension, .ohmsLaw, .potentiometer, .resistanceWire,
             .lensFocusing, .refraction, .moments, .vernierCaliper,
-            .densityDisplacement, .coolingCurve, .filamentLamp
+            .densityDisplacement, .coolingCurve, .filamentLamp,
+            .balancedForces, .centreOfGravity, .magneticFieldWire, .planeMirrorReflection
         ],
         graphTypes: [.forceExtension, .currentVoltage, .distanceTime, .tSquaredVsLength, .sinIVsSinR],
         keyTopics: [
@@ -98,7 +99,8 @@ enum CurriculumProfiles {
         simulations: [
             .pendulum, .springExtension, .ohmsLaw, .resistanceWire, .lensFocusing,
             .refraction, .moments, .vernierCaliper, .densityDisplacement,
-            .coolingCurve, .filamentLamp
+            .coolingCurve, .filamentLamp,
+            .balancedForces, .centreOfGravity, .magneticFieldWire, .planeMirrorReflection
         ],
         graphTypes: [.forceExtension, .currentVoltage, .distanceTime, .tSquaredVsLength, .sinIVsSinR],
         keyTopics: [
@@ -134,7 +136,8 @@ enum CurriculumProfiles {
         simulations: [
             .pendulum, .springExtension, .ohmsLaw, .resistanceWire, .lensFocusing,
             .refraction, .moments, .vernierCaliper, .densityDisplacement,
-            .coolingCurve, .filamentLamp
+            .coolingCurve, .filamentLamp,
+            .balancedForces, .centreOfGravity, .magneticFieldWire, .planeMirrorReflection
         ],
         graphTypes: [.forceExtension, .currentVoltage, .distanceTime, .tSquaredVsLength, .sinIVsSinR],
         keyTopics: [
@@ -170,7 +173,8 @@ enum CurriculumProfiles {
         simulations: [
             .pendulum, .springExtension, .ohmsLaw, .resistanceWire, .lensFocusing,
             .refraction, .moments, .vernierCaliper, .densityDisplacement,
-            .coolingCurve, .filamentLamp
+            .coolingCurve, .filamentLamp,
+            .balancedForces, .centreOfGravity, .magneticFieldWire, .planeMirrorReflection
         ],
         graphTypes: [.forceExtension, .currentVoltage, .distanceTime, .tSquaredVsLength, .sinIVsSinR],
         keyTopics: [

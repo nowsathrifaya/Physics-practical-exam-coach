@@ -107,7 +107,6 @@ final class AceViewModel {
     }
 
     func revealAnswer() {
-        SoundManager.shared.play(.tap)
         answerRevealed = true
     }
 
@@ -119,7 +118,6 @@ final class AceViewModel {
         boxes[q.id] = correct ? min(currentBox + 1, 5) : 1 // wrong -> back to box 1
         questionsSinceLastSeen[q.id] = 0
         questionsAnsweredTotal += 1
-        SoundManager.shared.play(correct ? .success : .error)
 
         for other in pool where other.id != q.id {
             bumpSinceLastSeen(other.id)
@@ -142,7 +140,6 @@ final class AceViewModel {
         if let questionLimit, sessionStats.answered >= questionLimit {
             quizFinished = true
             currentQuestion = nil
-            SoundManager.shared.play(.complete)
         } else {
             advanceToNextQuestion()
         }
@@ -150,7 +147,6 @@ final class AceViewModel {
 
     func skipQuestion() {
         guard let q = currentQuestion else { return }
-        SoundManager.shared.play(.tap)
         questionsSinceLastSeen[q.id] = 0
         for other in pool where other.id != q.id {
             bumpSinceLastSeen(other.id)
@@ -228,7 +224,6 @@ final class AceViewModel {
             mockExamTimer?.invalidate()
             mockExamTimer = nil
             mockExamFinished = true
-            SoundManager.shared.play(.complete)
             return
         }
         mockExamSecondsRemaining -= 1
@@ -244,7 +239,6 @@ final class AceViewModel {
         mockExamTimer?.invalidate()
         mockExamTimer = nil
         mockExamFinished = true
-        SoundManager.shared.play(.complete)
     }
 }
 

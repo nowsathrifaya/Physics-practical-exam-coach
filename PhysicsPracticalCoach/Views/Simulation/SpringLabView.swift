@@ -67,12 +67,6 @@ final class SpringExperimentViewModel {
     var pendingReadingInput: String = ""
     private(set) var awaitingReading = false
 
-    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
-    /// once after `calculateResult()` sets `result`. Nil by default, so
-    /// existing standalone `SpringLabView` usage behaves exactly as before;
-    /// only the new wrapping workflow sets this.
-    var onFinished: ((LabRunResult) -> Void)?
-
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = SpringLabState(seed: seed)
@@ -96,7 +90,6 @@ final class SpringExperimentViewModel {
 
     func submitReading() {
         guard let value = Double(pendingReadingInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) else { return }
-        SoundManager.shared.play(.measurement)
         let load = apparatus.loadedMassKg * 9.81
         readings.append(LabReading(
             trialNumber: readings.count + 1,
@@ -115,7 +108,6 @@ final class SpringExperimentViewModel {
             guard let x = reading.derivedValue else { return nil }
             return RegressionPoint(x: x, y: reading.value)
         }
-        guard points.count >= 2 else { return } // defensive: LinearRegression.fit requires >=2
         let regression = LinearRegression.fit(points)
         let studentK = regression.slope
         let tolerance = apparatus.trueK * 0.12
@@ -136,7 +128,6 @@ final class SpringExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.springExtension.label, result: outcome)
-        onFinished?(outcome)
     }
 
     /// Chart of the student's own recorded readings, reusing the exact
@@ -169,14 +160,12 @@ struct SpringLabView: View {
     @State private var viewModel: SpringExperimentViewModel
     @FocusState private var readingFieldFocused: Bool
 
-    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
+    init(curriculum: Curriculum, repository: AttemptRepository) {
         self.curriculum = curriculum
-        let model = SpringExperimentViewModel(
+        _viewModel = State(initialValue: SpringExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        )
-        model.onFinished = onFinished
-        _viewModel = State(initialValue: model)
+        ))
     }
 
     var body: some View {
@@ -196,68 +185,29 @@ struct SpringLabView: View {
             GeometryReader { geo in
                 let pivot = CGPoint(x: geo.size.width / 2, y: 24)
                 let rulerBottom = geo.size.height - 90
-                let restY = pivot.y + 40 // where the spring hangs at rest, before any load — this is the ruler's true zero
-                let pxPerMetre: CGFloat = (rulerBottom - restY) / 0.3 // spring can extend up to ~0.3 m visually
+                let pxPerMetre: CGFloat = (rulerBottom - pivot.y - 40) / 0.3 // spring can extend up to ~0.3 m visually
                 let extensionM = viewModel.apparatus.animatedExtensionM(at: timeline.date)
-                let bottomY = restY + CGFloat(extensionM) * pxPerMetre
+                let bottomY = pivot.y + 40 + CGFloat(extensionM) * pxPerMetre
 
                 Canvas { context, _ in
                     LabCanvasHelpers.drawVerticalRuler(
-                        context: context, originX: pivot.x + 60, topY: restY,
-                        heightPx: rulerBottom - restY, maxValue: 0.30, minorStep: 0.01, unit: "m"
+                        context: context, originX: pivot.x + 60, topY: pivot.y,
+                        heightPx: rulerBottom - pivot.y, maxValue: 0.30, minorStep: 0.01
                     )
 
-                    // Retort stand clamp: a boss head gripping the spring at
-                    // the pivot, with a stub of the stand rod behind it —
-                    // gives the spring something believable to hang from
-                    // instead of floating from an invisible point.
-                    let clampRect = CGRect(x: pivot.x - 22, y: pivot.y - 14, width: 44, height: 16)
-                    context.fill(
-                        Path(roundedRect: clampRect, cornerRadius: 3),
-                        with: .linearGradient(Gradient(colors: [ApparatusPalette.steelLight, ApparatusPalette.steelMid]), startPoint: CGPoint(x: 0, y: clampRect.minY), endPoint: CGPoint(x: 0, y: clampRect.maxY))
-                    )
-                    context.stroke(Path(roundedRect: clampRect, cornerRadius: 3), with: .color(ApparatusPalette.steelDark), lineWidth: 1)
-                    context.fill(Path(CGRect(x: pivot.x + 18, y: pivot.y - 18, width: 5, height: 24)), with: .color(ApparatusPalette.steelDark))
-                    context.fill(Path(ellipseIn: CGRect(x: pivot.x - 3, y: pivot.y - 4, width: 6, height: 6)), with: .color(ApparatusPalette.frame))
-
-                    // Spring: real coils, not a zig-zag — each loop drawn as
-                    // an ellipse that widens and shades like metal wire
-                    // rather than a flat two-point-per-turn outline.
-                    let coils = 11
-                    let coilWidth: CGFloat = 15
-                    let coilHeight = max((bottomY - pivot.y) / CGFloat(coils), 3)
-                    var coilPaths = Path()
-                    for i in 0..<coils {
-                        let y = pivot.y + CGFloat(i) * coilHeight
-                        let loopRect = CGRect(x: pivot.x - coilWidth, y: y, width: coilWidth * 2, height: coilHeight * 1.15)
-                        coilPaths.addEllipse(in: loopRect)
+                    // Spring: drawn as a zig-zag path from pivot to bottom hook.
+                    var spring = Path()
+                    spring.move(to: pivot)
+                    let coils = 10
+                    let coilWidth: CGFloat = 14
+                    for i in 0...coils {
+                        let t = CGFloat(i) / CGFloat(coils)
+                        let y = pivot.y + t * (bottomY - pivot.y)
+                        let x = pivot.x + (i % 2 == 0 ? -coilWidth : coilWidth)
+                        spring.addLine(to: CGPoint(x: x, y: y))
                     }
-                    context.stroke(coilPaths, with: .color(ApparatusPalette.steelDark), lineWidth: 1)
-                    context.stroke(
-                        coilPaths,
-                        with: .linearGradient(Gradient(colors: [ApparatusPalette.steelLight, ApparatusPalette.steelMid, ApparatusPalette.steelDark]), startPoint: CGPoint(x: pivot.x - coilWidth, y: 0), endPoint: CGPoint(x: pivot.x + coilWidth, y: 0)),
-                        lineWidth: 2.5
-                    )
-                    var centreWire = Path()
-                    centreWire.move(to: pivot)
-                    centreWire.addLine(to: CGPoint(x: pivot.x, y: bottomY))
-                    context.stroke(centreWire, with: .color(ApparatusPalette.steelDark.opacity(0.35)), lineWidth: 1)
-
-                    // Pointer: a dashed line from the hook straight across to
-                    // the ruler, plus an arrow at the ruler edge, so it's
-                    // clear which mark corresponds to the current position —
-                    // without this the ruler and the moving hook have no
-                    // visible connection to read from.
-                    var pointerLine = Path()
-                    pointerLine.move(to: CGPoint(x: pivot.x + 10, y: bottomY))
-                    pointerLine.addLine(to: CGPoint(x: pivot.x + 60, y: bottomY))
-                    context.stroke(pointerLine, with: .color(Color(hex: "#C0392B")), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                    var arrow = Path()
-                    arrow.move(to: CGPoint(x: pivot.x + 60, y: bottomY))
-                    arrow.addLine(to: CGPoint(x: pivot.x + 52, y: bottomY - 5))
-                    arrow.addLine(to: CGPoint(x: pivot.x + 52, y: bottomY + 5))
-                    arrow.closeSubpath()
-                    context.fill(arrow, with: .color(Color(hex: "#C0392B")))
+                    spring.addLine(to: CGPoint(x: pivot.x, y: bottomY))
+                    context.stroke(spring, with: .color(Color(hex: "#0F5A4F")), lineWidth: 2.5)
 
                     if viewModel.apparatus.loadedMassKg > 0 {
                         LabCanvasHelpers.drawWeight(context: context, center: CGPoint(x: pivot.x, y: bottomY + 16), radiusPx: 16, color: Color(hex: "#D98B36"))

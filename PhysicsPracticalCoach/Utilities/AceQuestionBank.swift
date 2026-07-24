@@ -436,6 +436,82 @@ enum AceQuestionBank {
             modelAnswer: "(a) IV: L/cm; DV: T/s; CV: mass of bob, angle (<10\u{00B0}), same location.\n(b) Time 20 oscillations; T = t\u{2082}\u{2080}/20; repeat and average.\n(c) L = 10.0, 20.0, 30.0, 40.0, 50.0, 60.0 cm.\n(d) L/cm | t\u{2082}\u{2080}(1)/s | t\u{2082}\u{2080}(2)/s | t\u{2090}\u{1D65}\u{2091}/s | T/s | T\u{00B2}/s\u{00B2}\n(e) Plot T\u{00B2}/s\u{00B2} vs L/cm \u{2192} straight line through origin confirms T\u{00B2}\u{221D}L; gradient = 4\u{03C0}\u{00B2}/g \u{2192} g = 4\u{03C0}\u{00B2}/gradient.\n(f) Ensured angle < 10\u{00B0} to maintain SHM and avoid affecting period.",
             commonMistakes: "\u{2717} Not specifying 6 exact L values\n\u{2717} Bracket notation in headings instead of solidus\n\u{2717} Plotting T vs L (gives curve, not line)\n\u{2717} Stating g = gradient instead of g = 4\u{03C0}\u{00B2}/gradient\n\u{2717} Precaution without reason",
             examinerTip: "Planning: variables (1), measurement (1), 6 values (1), table (1), graph+gradient (2), precaution (1). Address each mark point explicitly."
+        ),
+
+        // MARK: - Balanced & Unbalanced Forces (universal)
+
+        AceQuestion(
+            id: "forces_ace_01", topic: .forces, skillArea: .ace, difficulty: .standard,
+            marks: 2, curricula: allBoards,
+            questionText: "A trolley is pulled by a constant force over a runway and accelerates uniformly. State the equation linking the force F, the trolley's mass m, and its acceleration a, and explain what a straight line through the origin on an F-a graph shows.",
+            modelAnswer: "\u{2022} F = ma.\n\u{2022} A straight line through the origin shows F is directly proportional to a (for constant mass m), confirming Newton's second law.\n\u{2022} The gradient of the line equals the mass m of the trolley system.",
+            commonMistakes: "\u{2717} Writing F = ma but not linking the gradient to mass.\n\u{2717} Saying 'force causes acceleration' without the proportionality/gradient statement, which is where the marks actually are.",
+            examinerTip: "Always name what the gradient physically represents (here, mass) \u{2014} examiners give a specific mark for that, not just for quoting the formula."
+        ),
+        AceQuestion(
+            id: "forces_ace_02", topic: .forces, skillArea: .ace, difficulty: .standard,
+            marks: 2, curricula: allBoards,
+            questionText: "In an experiment on balanced and unbalanced forces, the runway is tilted slightly before any pulling force is applied, so the trolley moves at constant velocity when given a small push. Explain why this step is carried out.",
+            modelAnswer: "\u{2022} This is called 'compensating for friction'.\n\u{2022} Tilting the runway makes the component of the trolley's weight along the slope exactly balance the friction force, so once a pulling force is added, ALL of it produces acceleration.\n\u{2022} Without this step, some of the applied force would be used to overcome friction, giving an underestimate of the acceleration for a given force.",
+            commonMistakes: "\u{2717} 'To make the trolley go faster' \u{2014} does not explain the physics.\n\u{2717} Confusing this with reducing air resistance rather than friction.",
+            examinerTip: "The phrase 'compensating for friction' is worth its own mark on its own \u{2014} always name the technique, then explain why it matters for F = ma to hold."
+        ),
+
+        // MARK: - Centre of Gravity (universal)
+
+        AceQuestion(
+            id: "cog_mmo_01", topic: .centreOfGravity, skillArea: .mmo, difficulty: .standard,
+            marks: 2, curricula: allBoards,
+            questionText: "Describe how a plumb line is used to locate the centre of gravity of an irregularly-shaped lamina.",
+            modelAnswer: "\u{2022} Suspend the lamina freely from a pin through a hole near its edge, so it can swing freely.\n\u{2022} Hang a plumb line (a mass on a thread) from the same pin and, once it is still, trace the line it makes on the lamina.\n\u{2022} Repeat from at least one other (ideally two other) suspension points.\n\u{2022} The centre of gravity is where the traced lines intersect.",
+            commonMistakes: "\u{2717} Only using ONE suspension point \u{2014} a single line only shows the CoG lies somewhere along it, not where.\n\u{2717} Forgetting to let the lamina/plumb line come to rest before tracing.",
+            examinerTip: "The lamina must swing freely and settle before you trace the line \u{2014} tracing while it's still moving is a common lost mark for 'lack of precaution.'"
+        ),
+        AceQuestion(
+            id: "cog_ace_01", topic: .centreOfGravity, skillArea: .ace, difficulty: .standard,
+            marks: 2, curricula: allBoards,
+            questionText: "A student uses only TWO suspension points instead of three when finding the centre of gravity of a lamina. Suggest why using a third point improves the result, and state one precaution to make the plumb line reading itself more accurate.",
+            modelAnswer: "\u{2022} A third line acts as a check \u{2014} if all three lines cross at (or very near) the same point, this confirms the result; two lines alone could cross at the right point by chance even if one line was drawn slightly wrong.\n\u{2022} Precaution: view the plumb line at eye level (avoid parallax) when marking its position, and mark two points along it before removing it, then join them with a ruler.",
+            commonMistakes: "\u{2717} 'To be more accurate' without explaining HOW a third line improves confidence in the result.\n\u{2717} A precaution about the lamina hanging freely, which is already required \u{2014} the question specifically asks about the plumb-line reading itself.",
+            examinerTip: "When a question asks for a precaution about a specific step, an answer about a different step (however correct) will not be credited \u{2014} always re-read exactly which step is being asked about."
+        ),
+
+        // MARK: - Law of Reflection (universal)
+
+        AceQuestion(
+            id: "refl_ace_01", topic: .reflection, skillArea: .ace, difficulty: .basic,
+            marks: 2, curricula: allBoards,
+            questionText: "A student measures the angle of incidence i and angle of reflection r for a plane mirror at several values of i and finds r is always approximately equal to i. State the law this demonstrates, and state ONE precaution to ensure both angles are measured correctly.",
+            modelAnswer: "\u{2022} Law of reflection: the angle of incidence equals the angle of reflection (both measured from the normal).\n\u{2022} Precaution: measure both angles from the normal (the line perpendicular to the mirror at the point of incidence), not from the mirror surface itself.",
+            commonMistakes: "\u{2717} Measuring angles from the mirror surface instead of the normal \u{2014} this is the single most common error in this experiment.\n\u{2717} Stating the law without mentioning that both angles are measured from the normal.",
+            examinerTip: "Always specify 'measured from the normal' when stating the law of reflection \u{2014} leaving this out is a very common way to lose the definition mark even when the physics understanding is correct."
+        ),
+        AceQuestion(
+            id: "refl_mmo_01", topic: .reflection, skillArea: .mmo, difficulty: .standard,
+            marks: 2, curricula: allBoards,
+            questionText: "Describe how optical pins are used to locate the reflected ray from a plane mirror so that the angle of reflection can be measured accurately.",
+            modelAnswer: "\u{2022} Push two pins into the paper along the incident ray, then view their reflections in the mirror.\n\u{2022} Push two more pins so that they appear to line up exactly with the reflections of the first two pins (line of sight).\n\u{2022} Remove the pins and mirror, then join the pin-holes with a ruled line to construct the reflected ray, and measure its angle from the normal with a protractor.",
+            commonMistakes: "\u{2717} Only using one pin per ray \u{2014} at least two points are needed to draw a straight line accurately.\n\u{2717} Viewing the reflection from directly above rather than along the sightline of the pins, which introduces parallax error.",
+            examinerTip: "This 'no-parallax' pin method is the classic MMO technique question for plane mirrors \u{2014} examiners expect the words 'no parallax' or 'in line' in the description."
+        ),
+
+        // MARK: - Magnetic Effect of a Current (universal)
+
+        AceQuestion(
+            id: "mag_ace_01", topic: .magnetism, skillArea: .ace, difficulty: .standard,
+            marks: 2, curricula: allBoards,
+            questionText: "A plotting compass is placed at several points around a long straight vertical wire carrying a current. Describe the pattern of the magnetic field found, and state what happens to this pattern if the current is reversed.",
+            modelAnswer: "\u{2022} The field forms concentric circles around the wire, in a plane perpendicular to the wire.\n\u{2022} The compass needles at different points all point tangentially to these circles (not directly toward or away from the wire).\n\u{2022} If the current is reversed, the direction of the field reverses \u{2014} every compass needle points the opposite way.",
+            commonMistakes: "\u{2717} Describing the field as radiating outward from the wire (like a point charge's field) rather than circling around it.\n\u{2717} Forgetting to state that reversing the current reverses the field direction, not just its strength.",
+            examinerTip: "Sketch the field before answering in words \u{2014} concentric circles, tangential needle directions \u{2014} then describe what you drew. This avoids the common radiating-lines mistake."
+        ),
+        AceQuestion(
+            id: "mag_mmo_01", topic: .magnetism, skillArea: .mmo, difficulty: .standard,
+            marks: 2, curricula: allBoards,
+            questionText: "State one precaution needed when using a plotting compass to investigate the magnetic field near a current-carrying wire, and explain why it matters.",
+            modelAnswer: "\u{2022} Keep other magnetic materials and current-carrying wires away from the compass during readings.\n\u{2022} This matters because a nearby magnet, steel object, or second wire would add its own magnetic field, distorting the compass reading so it no longer shows only the field due to the wire being investigated.",
+            commonMistakes: "\u{2717} 'Keep the compass still' \u{2014} this doesn't address the actual source of error (interference from other fields).\n\u{2717} Not explaining WHY the precaution is needed, which is where the second mark is awarded.",
+            examinerTip: "For any precaution question, state the action AND the specific way it would otherwise corrupt the result \u{2014} one-word precautions without a reason rarely score full marks."
         )
     ]
 

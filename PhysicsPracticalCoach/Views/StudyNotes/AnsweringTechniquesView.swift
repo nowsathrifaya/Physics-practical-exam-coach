@@ -15,16 +15,6 @@ struct ApparatusError: Identifiable, Hashable {
     var id: String { error }
     let error: String
     let fix: String
-    /// How many marks this mistake typically costs on the real mark
-    /// scheme — shown as a star rating so a student can triage which
-    /// mistakes matter most, rather than treating every error as equal.
-    var marksLost: Int = 1
-    /// The specific corrected value/phrasing, shown separately from
-    /// `fix` (which becomes the *reason* once this is set) — e.g.
-    /// error: "0.5 A", correctAnswer: "0.50 A", fix (now the reason):
-    /// "Missing trailing zero loses the precision mark." When nil, the
-    /// display falls back to showing just `fix` as before.
-    var correctAnswer: String? = nil
 }
 
 struct AnsweringTechnique: Identifiable {
@@ -55,9 +45,9 @@ enum AnsweringTechniquesBank {
                 "Check for zero error: close the jaws fully with nothing inside and read the vernier zero position."
             ],
             errors: [
-                ApparatusError(error: "Picking the wrong vernier coincidence line", fix: "Only one line ever aligns exactly — scan the whole vernier scale, don't stop at the first close match.", marksLost: 2),
-                ApparatusError(error: "Ignoring zero error", fix: "This is one of the most heavily penalised mistakes on the whole paper — the examiner can't award the measurement mark at all without the correction shown.", marksLost: 4, correctAnswer: "Subtract a positive zero error (or add if negative) from every reading before you write your final answer"),
-                ApparatusError(error: "2.3 cm", fix: "Vernier readings always need 2 d.p. — dropping the second digit loses the precision mark even if the first digit is right.", marksLost: 1, correctAnswer: "2.34 cm")
+                ApparatusError(error: "Picking the wrong vernier coincidence line", fix: "Only one line ever aligns exactly — scan the whole vernier scale, don't stop at the first close match."),
+                ApparatusError(error: "Ignoring zero error", fix: "If closed jaws don't read exactly 0.00 cm, subtract a positive zero error (or add if negative) from every reading before you write your final answer."),
+                ApparatusError(error: "Reading to only 1 d.p.", fix: "Vernier readings always need 2 d.p., e.g. 2.34 cm — never 2.3 cm.")
             ],
             howToAnswer: "Diameter = (main scale + vernier scale) − zero error = 2.40 + 0.04 − (−0.02) = 2.46 cm. Always show the subtraction of zero error explicitly — examiners award a mark just for showing that step."
         ),
@@ -89,9 +79,9 @@ enum AnsweringTechniquesBank {
                 "Double-check you're reading the correct range if the meter has more than one scale."
             ],
             errors: [
-                ApparatusError(error: "Parallax error", fix: "View the pointer square-on, not from an angle — use the mirror strip if the meter has one.", marksLost: 2),
-                ApparatusError(error: "Wrong scale range read", fix: "Confirm which f.s.d. (e.g. 0–1 A vs 0–5 A) the circuit is actually using before you read off the number.", marksLost: 2),
-                ApparatusError(error: "0.5 A", fix: "Missing trailing zero loses the precision mark.", marksLost: 1, correctAnswer: "0.50 A")
+                ApparatusError(error: "Parallax error", fix: "View the pointer square-on, not from an angle — use the mirror strip if the meter has one."),
+                ApparatusError(error: "Wrong scale range read", fix: "Confirm which f.s.d. (e.g. 0–1 A vs 0–5 A) the circuit is actually using before you read off the number."),
+                ApparatusError(error: "Recording in whole divisions only", fix: "Interpolate to half a division rather than rounding to the nearest marked line — e.g. 0.50 A, not 0.5 A rounded from a coarser scale.")
             ],
             howToAnswer: "I = 0.44 A. State the reading with the trailing decimal place that matches the instrument's precision, and note the range used if the question asks for it (e.g. 'read on the 0–1 A scale')."
         ),
@@ -105,9 +95,9 @@ enum AnsweringTechniquesBank {
                 "Cross-check the reading makes physical sense against the circuit's supply voltage."
             ],
             errors: [
-                ApparatusError(error: "Reading the wrong dual scale", fix: "Dual-range voltmeters (3 V/5 V) look almost identical — always confirm which range the selector switch is set to before reading.", marksLost: 3),
-                ApparatusError(error: "Parallax error", fix: "Keep your eye level with, and directly in front of, the pointer.", marksLost: 2),
-                ApparatusError(error: "1.2 V", fix: "The extra digit shows the correct precision of the instrument — a smallest division of 0.1 V means the answer must be recorded to 0.05 V.", marksLost: 1, correctAnswer: "1.20 V")
+                ApparatusError(error: "Reading the wrong dual scale", fix: "Dual-range voltmeters (3 V/5 V) look almost identical — always confirm which range the selector switch is set to before reading."),
+                ApparatusError(error: "Parallax error", fix: "Keep your eye level with, and directly in front of, the pointer."),
+                ApparatusError(error: "Dropping the trailing zero", fix: "Write 1.20 V, not 1.2 V — the extra digit shows the correct precision of the instrument.")
             ],
             howToAnswer: "V = 1.20 V. If the question gives both current and voltage, show R = V/I as a separate working line — many mark schemes give a mark just for showing the substitution, not only the final number."
         ),
@@ -291,26 +281,6 @@ struct AnsweringTechniquesPagerView: View {
     }
 }
 
-/// Star-rated "how much does this mistake cost" indicator — lets a
-/// student triage at a glance which errors are worth fixing first,
-/// rather than treating a missing unit the same as a wrong reading.
-private struct MarksLostBadge: View {
-    let marksLost: Int
-
-    var body: some View {
-        HStack(spacing: 3) {
-            ForEach(0..<4, id: \.self) { i in
-                Image(systemName: i < marksLost ? "star.fill" : "star")
-                    .font(.caption2)
-                    .foregroundStyle(i < marksLost ? .orange : Color(.tertiaryLabel))
-            }
-            Text(marksLost <= 1 ? "Lose 1 mark" : "Lose up to \(marksLost) marks")
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
 private struct ReadingTechniquePage: View {
     let technique: AnsweringTechnique
 
@@ -331,8 +301,6 @@ private struct ReadingTechniquePage: View {
                     }
                 }
             }
-
-            MemoryBox(apparatusName: technique.apparatus.label, precision: technique.precision)
         }
     }
 
@@ -348,30 +316,6 @@ private struct ReadingTechniquePage: View {
     }
 }
 
-/// "5-second memory box" — a short, highly compressed callout meant to be
-/// re-read many times during revision, distinct from the fuller
-/// step-by-step instructions above it.
-private struct MemoryBox: View {
-    let apparatusName: String
-    let precision: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text("\u{1F9E0}").font(.title2)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Remember").font(.subheadline.weight(.bold))
-                Text("\(apparatusName) \u{2192} \(precision)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.yellow.opacity(0.15), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.yellow.opacity(0.4), lineWidth: 1))
-    }
-}
-
 private struct AnsweringExamPage: View {
     let technique: AnsweringTechnique
 
@@ -383,28 +327,9 @@ private struct AnsweringExamPage: View {
                 VStack(alignment: .leading, spacing: 16) {
                     ForEach(technique.errors) { item in
                         VStack(alignment: .leading, spacing: 4) {
-                            HStack(alignment: .firstTextBaseline) {
-                                Text("\u{2717} \(item.error)").font(.title3.weight(.semibold)).foregroundStyle(.red)
-                                Spacer()
-                                MarksLostBadge(marksLost: item.marksLost)
-                            }
-                            if let correctAnswer = item.correctAnswer {
-                                Text("\u{2713} Correct: \(correctAnswer)").font(.body.weight(.semibold)).foregroundStyle(.green)
-                                Text("Reason: \(item.fix)").font(.body).foregroundStyle(.secondary)
-                            } else {
-                                Text(item.fix).font(.body).foregroundStyle(.secondary)
-                            }
+                            Text("\u{2717} \(item.error)").font(.title3.weight(.semibold)).foregroundStyle(.red)
+                            Text(item.fix).font(.body).foregroundStyle(.secondary)
                         }
-                    }
-                }
-            }
-
-            block(title: "Common examiner comments", tint: .orange) {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(Self.commonExaminerComments, id: \.self) { comment in
-                        Label(comment, systemImage: "text.bubble")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -414,16 +339,6 @@ private struct AnsweringExamPage: View {
             }
         }
     }
-
-    /// The same handful of comments examiners write across almost every
-    /// apparatus — shown once per page as a reusable checklist rather
-    /// than repeated per-instrument content.
-    private static let commonExaminerComments = [
-        "\u{2717} Precision incorrect",
-        "\u{2717} Unit omitted",
-        "\u{2717} Wrong meniscus/parallax reading",
-        "\u{2717} Zero error ignored",
-    ]
 
     @ViewBuilder
     private func block<Content: View>(title: String, tint: Color, @ViewBuilder content: () -> Content) -> some View {

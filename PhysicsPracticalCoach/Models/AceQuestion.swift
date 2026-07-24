@@ -58,6 +58,10 @@ enum AceTopic: String, CaseIterable, Codable {
     case generalPlanning = "GENERAL_PLANNING"
     case heat = "HEAT"
     case density = "DENSITY"
+    case forces = "FORCES"
+    case centreOfGravity = "CENTRE_OF_GRAVITY"
+    case reflection = "REFLECTION"
+    case magnetism = "MAGNETISM"
 
     var label: String {
         switch self {
@@ -74,6 +78,10 @@ enum AceTopic: String, CaseIterable, Codable {
         case .generalPlanning: return "Experiment Planning"
         case .heat: return "Thermal Physics"
         case .density: return "Density Determination"
+        case .forces: return "Balanced & Unbalanced Forces"
+        case .centreOfGravity: return "Centre of Gravity"
+        case .reflection: return "Law of Reflection"
+        case .magnetism: return "Magnetic Effect of a Current"
         }
     }
 }

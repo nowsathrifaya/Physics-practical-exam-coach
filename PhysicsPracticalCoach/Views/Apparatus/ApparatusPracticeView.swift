@@ -36,7 +36,6 @@ final class ApparatusPracticeViewModel {
         let reading = Double(studentInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
         let outcome = trainer.mark(question: question, studentReading: reading)
         result = outcome
-        SoundManager.shared.play(outcome.correct ? .success : .error)
         repository.save(
             curriculum: curriculum,
             mode: .apparatusPractice,
@@ -49,7 +48,6 @@ final class ApparatusPracticeViewModel {
     }
 
     func nextQuestion() {
-        SoundManager.shared.play(.tap)
         question = trainer.question(type: apparatusType, seed: Int.random(in: 0...Int(Int32.max)), curriculum: curriculum)
         studentInput = ""
         result = nil
@@ -60,19 +58,10 @@ struct ApparatusPracticeView: View {
     @State private var viewModel: ApparatusPracticeViewModel
     var onSaved: (() -> Void)?
     @FocusState private var inputFocused: Bool
-    @State private var isZoomed = false
-    @State private var showHowToRead = false
 
     init(apparatusType: ApparatusType, curriculum: Curriculum, repository: AttemptRepository, onSaved: (() -> Void)? = nil) {
         _viewModel = State(initialValue: ApparatusPracticeViewModel(apparatusType: apparatusType, curriculum: curriculum, repository: repository))
         self.onSaved = onSaved
-    }
-
-    /// The matching "Answering Techniques" entry for this apparatus —
-    /// every `ApparatusType` has one (see `AnsweringTechniquesBank`), so
-    /// this is only `nil` defensively.
-    private var technique: AnsweringTechnique? {
-        AnsweringTechniquesBank.technique(for: viewModel.apparatusType)
     }
 
     var body: some View {
@@ -82,21 +71,6 @@ struct ApparatusPracticeView: View {
                     .frame(height: instrumentCanvasHeight)
                     .frame(maxWidth: .infinity)
                     .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .animation(.easeInOut, value: isZoomed)
-
-                HStack {
-                    Button(isZoomed ? "\u{1F50D} Zoom out" : "\u{1F50D} Zoom in to read") {
-                        withAnimation { isZoomed.toggle() }
-                    }
-                    .font(.caption)
-                    Spacer()
-                    if technique != nil {
-                        Button("\u{1F4D6} How to read this") {
-                            showHowToRead = true
-                        }
-                        .font(.caption)
-                    }
-                }
 
                 Text(viewModel.question.prompt)
                     .font(.subheadline)
@@ -121,7 +95,6 @@ struct ApparatusPracticeView: View {
                             inputFocused = false
                             viewModel.submit(onSaved: { onSaved?() })
                         } else {
-                            isZoomed = false
                             viewModel.nextQuestion()
                         }
                     }
@@ -134,33 +107,20 @@ struct ApparatusPracticeView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle(viewModel.apparatusType.label)
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showHowToRead) {
-            if let technique {
-                NavigationStack {
-                    AnsweringTechniquesPagerView(techniques: [technique], startIndex: 0)
-                }
-            }
-        }
     }
 
     /// Tall, narrow instruments (newton meter, burette, thermometer, measuring
     /// cylinder, stopwatch) read more clearly with extra vertical room than the
-    /// wide, short vernier/micrometer/dial gauges. Zoomed adds roughly 40%
-    /// more room so the same `Canvas` renderers (which lay out proportionally
-    /// to their given size) draw noticeably larger scale divisions — the
-    /// same technique `RefractionLabView`/`ResistanceWireLabView` use for
-    /// their own zoom toggles.
+    /// wide, short vernier/micrometer/dial gauges.
     private var instrumentCanvasHeight: CGFloat {
-        let base: CGFloat
         switch viewModel.apparatusType {
         case .vernierCaliper, .micrometer, .ammeter, .voltmeter:
-            base = 220
+            return 220
         case .newtonMeter, .burette, .measuringCylinder, .thermometer:
-            base = 300
+            return 300
         case .stopwatch:
-            base = 260
+            return 260
         }
-        return isZoomed ? base * 1.4 : base
     }
 }
 

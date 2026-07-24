@@ -56,7 +56,6 @@ final class FindTheMistakeViewModel {
     func reveal() {
         guard selected != nil, !revealed else { return }
         revealed = true
-        SoundManager.shared.play(isCorrect ? .success : .error)
         repository.save(
             curriculum: curriculum, mode: .graphCoach,
             target: "\(graphType.label) - find the mistake",

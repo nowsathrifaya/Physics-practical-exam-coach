@@ -82,12 +82,6 @@ final class PotentiometerExperimentViewModel {
     private(set) var result: LabRunResult?
     var voltmeterInput: String = ""
 
-    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
-    /// once after `calculateResult()` sets `result`. Nil by default, so
-    /// existing standalone `PotentiometerLabView` usage behaves exactly as before;
-    /// only the new wrapping workflow sets this.
-    var onFinished: ((LabRunResult) -> Void)?
-
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = PotentiometerLabState(seed: seed)
@@ -106,7 +100,6 @@ final class PotentiometerExperimentViewModel {
 
     func recordReading() {
         guard let voltmeterValue = Double(voltmeterInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) else { return }
-        SoundManager.shared.play(.measurement)
         readings.append(LabReading(
             trialNumber: readings.count + 1,
             label: "Length l", value: (apparatus.jockeyPositionM * 100).rounded() / 100, unit: "m",
@@ -124,7 +117,6 @@ final class PotentiometerExperimentViewModel {
             guard let voltage = reading.derivedValue else { return nil }
             return RegressionPoint(x: reading.value, y: voltage)
         }
-        guard points.count >= 2 else { return } // defensive: LinearRegression.fit requires >=2
         let regression = LinearRegression.fit(points)
         let studentGradient = regression.slope
         let trueGradient = apparatus.truePotentialGradientVPerM
@@ -149,7 +141,6 @@ final class PotentiometerExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.potentiometer.label, result: outcome)
-        onFinished?(outcome)
     }
 
     var studentDataset: GraphDataset {
@@ -180,14 +171,12 @@ struct PotentiometerLabView: View {
     @State private var viewModel: PotentiometerExperimentViewModel
     @FocusState private var voltmeterFocused: Bool
 
-    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
+    init(curriculum: Curriculum, repository: AttemptRepository) {
         self.curriculum = curriculum
-        let model = PotentiometerExperimentViewModel(
+        _viewModel = State(initialValue: PotentiometerExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        )
-        model.onFinished = onFinished
-        _viewModel = State(initialValue: model)
+        ))
     }
 
     var body: some View {
@@ -274,7 +263,6 @@ private struct DialGaugeView: View {
             let center = CGPoint(x: size.width / 2, y: size.height * 0.85)
             let radius = min(size.width, size.height) * 0.7
 
-            LabCanvasHelpers.drawGaugeFace(context: context, center: center, radius: radius)
             LabCanvasHelpers.drawProtractorArc(context: context, center: center, radius: radius, startDeg: 180, endDeg: 360)
 
             let majorDivisions = 5
@@ -346,31 +334,31 @@ private struct JockeyWireView: View {
                 wire.move(to: CGPoint(x: leftX, y: wireY))
                 wire.addLine(to: CGPoint(x: leftX + wireWidth, y: wireY))
                 context.stroke(wire, with: .color(Color(hex: "#8B9997")), lineWidth: 4)
-                var wireHighlight = Path()
-                wireHighlight.move(to: CGPoint(x: leftX, y: wireY - 1.3))
-                wireHighlight.addLine(to: CGPoint(x: leftX + wireWidth, y: wireY - 1.3))
-                context.stroke(wireHighlight, with: .color(.white.opacity(0.4)), lineWidth: 1)
 
                 LabCanvasHelpers.drawLabel(context: context, text: "A", at: CGPoint(x: leftX - 4, y: wireY - 18), size: 12, weight: .bold)
                 LabCanvasHelpers.drawLabel(context: context, text: "B", at: CGPoint(x: leftX + wireWidth + 4, y: wireY - 18), size: 12, weight: .bold)
 
                 LabCanvasHelpers.drawHorizontalRuler(
                     context: context, originY: wireY + 10, leftX: leftX, widthPx: wireWidth,
-                    maxValue: wireLengthM * 100, minorStep: 5, unit: "cm"
+                    maxValue: wireLengthM * 100, minorStep: 5
                 )
-                LabCanvasHelpers.drawLabel(context: context, text: "length along wire", at: CGPoint(x: leftX + wireWidth / 2, y: wireY + 42), size: 10, color: .secondary)
+                var cm = 0
+                let totalCm = Int(wireLengthM * 100)
+                while cm <= totalCm {
+                    if cm % 20 == 0 {
+                        let x = leftX + CGFloat(Double(cm) / Double(totalCm)) * wireWidth
+                        LabCanvasHelpers.drawLabel(context: context, text: "\(cm)", at: CGPoint(x: x, y: wireY + 34), size: 9)
+                    }
+                    cm += 5
+                }
+                LabCanvasHelpers.drawLabel(context: context, text: "length along wire / cm", at: CGPoint(x: leftX + wireWidth / 2, y: wireY + 52), size: 10, color: .secondary)
 
                 // Jockey probe: a vertical lead down to the wire with a wiper knob on top.
                 var jockeyLead = Path()
                 jockeyLead.move(to: CGPoint(x: jockeyX, y: wireY - 30))
                 jockeyLead.addLine(to: CGPoint(x: jockeyX, y: wireY))
                 context.stroke(jockeyLead, with: .color(Color(hex: "#D98B36")), lineWidth: 3)
-                let knobRect = CGRect(x: jockeyX - 7, y: wireY - 38, width: 14, height: 14)
-                context.fill(
-                    Path(ellipseIn: knobRect),
-                    with: .radialGradient(Gradient(colors: [Color(hex: "#F2B36B"), Color(hex: "#D98B36")]), center: CGPoint(x: jockeyX - 3, y: wireY - 34), startRadius: 0, endRadius: 12)
-                )
-                context.stroke(Path(ellipseIn: knobRect), with: .color(.black.opacity(0.2)), lineWidth: 0.75)
+                context.fill(Path(ellipseIn: CGRect(x: jockeyX - 7, y: wireY - 38, width: 14, height: 14)), with: .color(Color(hex: "#D98B36")))
 
                 LabCanvasHelpers.drawLabel(
                     context: context, text: String(format: "l = %.2f m", positionM),
@@ -378,7 +366,7 @@ private struct JockeyWireView: View {
                 )
             }
             .contentShape(Rectangle())
-            .highPriorityGesture(
+            .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         let clampedX = min(max(value.location.x, leftX), leftX + wireWidth)

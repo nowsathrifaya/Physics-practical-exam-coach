@@ -55,8 +55,10 @@ struct LabScaffoldView<Apparatus: View, Controls: View>: View {
             VStack(alignment: .leading, spacing: 20) {
                 LabInstructionBanner(text: instructionText)
 
-                ZoomableApparatusView(height: apparatusHeight, content: apparatus)
+                apparatus()
+                    .frame(height: apparatusHeight)
                     .frame(maxWidth: .infinity)
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
                 controls()
 
@@ -73,52 +75,6 @@ struct LabScaffoldView<Apparatus: View, Controls: View>: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-/// Wraps any apparatus canvas with a zoom toggle: a button below it
-/// expands the exact same content into a larger, scrollable frame so
-/// students can zoom in to read dials, rulers, and scales precisely, then
-/// zoom back out. Added once here so every lab experiment gets it for
-/// free, rather than touching each lab file individually.
-///
-/// Deliberately a toggle-into-a-bigger-scrollable-frame, not a pinch
-/// gesture — several labs already have their own drag interactions on
-/// this same canvas (rheostat sliders, jockey contacts, angle-setting
-/// drags), and layering a pinch/pan gesture on top would risk fighting
-/// with those for the same touch. This approach changes nothing about
-/// those gestures; it just makes the canvas itself bigger to scroll
-/// around in. Those gestures were promoted to `.highPriorityGesture` so
-/// they keep priority over the ScrollView's own pan gesture once zoomed.
-private struct ZoomableApparatusView<Content: View>: View {
-    let height: CGFloat
-    @ViewBuilder var content: () -> Content
-    @State private var isZoomed = false
-
-    var body: some View {
-        VStack(spacing: 8) {
-            GeometryReader { outerGeo in
-                ScrollView([.horizontal, .vertical], showsIndicators: true) {
-                    content()
-                        .frame(
-                            width: outerGeo.size.width * (isZoomed ? 1.8 : 1),
-                            height: outerGeo.size.height * (isZoomed ? 1.8 : 1)
-                        )
-                }
-                .scrollDisabled(!isZoomed)
-            }
-            .frame(height: height)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) { isZoomed.toggle() }
-            } label: {
-                Label(isZoomed ? "Zoom out" : "Zoom in to take readings", systemImage: isZoomed ? "minus.magnifyingglass" : "plus.magnifyingglass")
-                    .font(.caption.weight(.semibold))
-            }
-            .buttonStyle(.bordered)
-        }
     }
 }
 
@@ -197,32 +153,6 @@ struct LabDataTableView: View {
         }
         .font(.subheadline)
         .padding(.vertical, 4)
-    }
-}
-
-/// Small "Trial 1 ✓ Trial 2 ✓ ... Trial 5" checklist so the student always
-/// knows how many readings are left before the recommended minimum, rather
-/// than only finding out from the readings table or the final feedback.
-/// Shared across labs (first used by Refraction, now Resistance Wire too)
-/// since it's generic trial-tracking UI, not lab-specific physics — unlike
-/// each lab's own `DialGaugeView` copy, which stays lab-local by design.
-struct TrialProgressView: View {
-    let completed: Int
-    let target: Int
-
-    var body: some View {
-        HStack(spacing: 6) {
-            ForEach(1...target, id: \.self) { trial in
-                HStack(spacing: 3) {
-                    Image(systemName: trial <= completed ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(trial <= completed ? Color(hex: "#2E7D32") : .secondary)
-                    Text("\(trial)")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .font(.caption)
     }
 }
 

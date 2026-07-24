@@ -40,7 +40,7 @@ final class MomentsLabState {
     private var leftMomentNm: Double { leftForceN * leftDistanceM }
     private var rightMomentNm: Double { rightForceN * rightDistanceM }
 
-    /// Net moment (left \u{2212} right) driving the live tilt — positive tips left down.
+    /// Net moment (left \u2212 right) driving the live tilt — positive tips left down.
     var netMomentNm: Double { leftMomentNm - rightMomentNm }
 
     /// Live beam tilt in degrees, purely visual, clamped so the drawing
@@ -68,12 +68,6 @@ final class MomentsExperimentViewModel {
     private static let distanceReadingTolerance = 0.01 // m, matches a cm-scale ruler read to nearest small division
     private static let momentDifferenceTolerance = 0.15 // fraction, generous for a by-eye balance judgement
 
-    /// Optional hook for the Virtual Lab Experiment workflow wrapper — fires
-    /// once after `calculateResult()` sets `result`. Nil by default, so
-    /// existing standalone `MomentsLabView` usage behaves exactly as before;
-    /// only the new wrapping workflow sets this.
-    var onFinished: ((LabRunResult) -> Void)?
-
     init(recorder: LabAttemptRecorder, seed: Int) {
         self.recorder = recorder
         self.apparatus = MomentsLabState(seed: seed)
@@ -99,7 +93,6 @@ final class MomentsExperimentViewModel {
 
     func submitReading() {
         guard let value = Double(pendingReadingInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) else { return }
-        SoundManager.shared.play(.measurement)
         dropDistancesM.append(pendingDropDistanceM)
         readings.append(LabReading(
             trialNumber: readings.count + 1,
@@ -158,7 +151,6 @@ final class MomentsExperimentViewModel {
         )
         result = outcome
         recorder.record(experimentTitle: SimulationType.moments.label, result: outcome)
-        onFinished?(outcome)
     }
 
     /// The left-side moment in effect for the trials recorded so far —
@@ -194,14 +186,12 @@ struct MomentsLabView: View {
     @State private var viewModel: MomentsExperimentViewModel
     @FocusState private var readingFieldFocused: Bool
 
-    init(curriculum: Curriculum, repository: AttemptRepository, onFinished: ((LabRunResult) -> Void)? = nil) {
+    init(curriculum: Curriculum, repository: AttemptRepository) {
         self.curriculum = curriculum
-        let model = MomentsExperimentViewModel(
+        _viewModel = State(initialValue: MomentsExperimentViewModel(
             recorder: LabAttemptRecorder(repository: repository, curriculum: curriculum),
             seed: Int.random(in: 0...Int(Int32.max))
-        )
-        model.onFinished = onFinished
-        _viewModel = State(initialValue: model)
+        ))
     }
 
     var body: some View {
@@ -224,18 +214,13 @@ struct MomentsLabView: View {
 
             ZStack {
                 Canvas { context, _ in
-                    // Pivot triangle — metal knife-edge wedge, shaded rather
-                    // than a flat silhouette.
+                    // Pivot triangle.
                     var pivotShape = Path()
                     pivotShape.move(to: CGPoint(x: pivot.x, y: pivot.y))
                     pivotShape.addLine(to: CGPoint(x: pivot.x - 14, y: pivot.y + 24))
                     pivotShape.addLine(to: CGPoint(x: pivot.x + 14, y: pivot.y + 24))
                     pivotShape.closeSubpath()
-                    context.fill(
-                        pivotShape,
-                        with: .linearGradient(Gradient(colors: [ApparatusPalette.steelLight, ApparatusPalette.steelDark]), startPoint: CGPoint(x: pivot.x - 14, y: pivot.y), endPoint: CGPoint(x: pivot.x + 14, y: pivot.y + 24))
-                    )
-                    context.stroke(pivotShape, with: .color(ApparatusPalette.frame), lineWidth: 1)
+                    context.fill(pivotShape, with: .color(Color(hex: "#0F5A4F")))
 
                     // Beam, rotated by the live tilt around the pivot.
                     let angleRad = viewModel.apparatus.tiltDeg * .pi / 180
@@ -250,58 +235,7 @@ struct MomentsLabView: View {
                     var beam = Path()
                     beam.move(to: leftEnd)
                     beam.addLine(to: rightEnd)
-                    context.stroke(beam, with: .color(Color(hex: "#6B4226")), lineWidth: 9)
-                    context.stroke(beam, with: .color(Color(hex: "#8B5E3C")), lineWidth: 7)
-
-                    // Highlight stripe along the top edge — offset
-                    // perpendicular to the beam's own tilt so it stays
-                    // correctly aligned as the beam rotates — the detail
-                    // that makes it read as a rounded wooden rule rather
-                    // than a flat painted bar.
-                    let perp = CGPoint(x: sin(angleRad) * 2.5, y: -cos(angleRad) * 2.5)
-                    var highlight = Path()
-                    highlight.move(to: CGPoint(x: leftEnd.x + perp.x, y: leftEnd.y + perp.y))
-                    highlight.addLine(to: CGPoint(x: rightEnd.x + perp.x, y: rightEnd.y + perp.y))
-                    context.stroke(highlight, with: .color(Color(hex: "#C9A27A").opacity(0.7)), lineWidth: 1.5)
-
-                    // Scale marks printed along the beam itself — the beam
-                    // *is* the metre rule in this experiment, so its
-                    // graduations must rotate with it rather than sit on a
-                    // separate fixed ruler below. Every 10 cm gets a major
-                    // tick + number; every 1 cm gets a minor tick, so the
-                    // student can actually read the distance where they
-                    // release the weight, matching `instructionText`'s
-                    // "read the distance off the ruler."
-                    let halfBeamCm = Int(MomentsLabState.halfBeamLengthM * 100)
-                    var minorTicks = Path()
-                    var majorTicks = Path()
-                    for cm in stride(from: -halfBeamCm, through: halfBeamCm, by: 1) {
-                        let t = CGFloat(cm) / CGFloat(halfBeamCm)
-                        let x = pivot.x + beamHalfLengthPx * t * cos(angleRad)
-                        let y = pivot.y + beamHalfLengthPx * t * sin(angleRad)
-                        let isMajor = cm % 10 == 0
-                        let tickLen: CGFloat = isMajor ? 10 : 5
-                        // Perpendicular to the beam so ticks read correctly at any tilt.
-                        let perpX = sin(angleRad) * tickLen
-                        let perpY = -cos(angleRad) * tickLen
-                        var tick = Path()
-                        tick.move(to: CGPoint(x: x, y: y))
-                        tick.addLine(to: CGPoint(x: x + perpX, y: y + perpY))
-                        if isMajor { majorTicks.addPath(tick) } else { minorTicks.addPath(tick) }
-                    }
-                    context.stroke(minorTicks, with: .color(.white.opacity(0.7)), lineWidth: 1)
-                    context.stroke(majorTicks, with: .color(.white), lineWidth: 1.5)
-                    for cm in stride(from: -halfBeamCm, through: halfBeamCm, by: 10) {
-                        let t = CGFloat(cm) / CGFloat(halfBeamCm)
-                        let x = pivot.x + beamHalfLengthPx * t * cos(angleRad)
-                        let y = pivot.y + beamHalfLengthPx * t * sin(angleRad)
-                        let labelOffsetX = sin(angleRad) * 20
-                        let labelOffsetY = -cos(angleRad) * 20
-                        LabCanvasHelpers.drawLabel(
-                            context: context, text: "\(abs(cm))",
-                            at: CGPoint(x: x + labelOffsetX, y: y + labelOffsetY), size: 8, color: .secondary
-                        )
-                    }
+                    context.stroke(beam, with: .color(Color(hex: "#8B5E3C")), lineWidth: 8)
 
                     // Left (fixed, given) weight.
                     let leftWeightT = viewModel.apparatus.leftDistanceM / MomentsLabState.halfBeamLengthM
@@ -321,7 +255,7 @@ struct MomentsLabView: View {
 
                     LabCanvasHelpers.drawLabel(context: context, text: viewModel.givenLeftDescription, at: CGPoint(x: pivot.x, y: 16), size: 11)
                 }
-                .highPriorityGesture(
+                .gesture(
                     DragGesture()
                         .onChanged { value in
                             guard !viewModel.awaitingReading else { return }

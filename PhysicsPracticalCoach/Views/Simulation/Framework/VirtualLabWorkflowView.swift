@@ -69,11 +69,7 @@ struct VirtualLabWorkflowView<CoreContent: View>: View {
         case .collectApparatus:
             CollectApparatusStageView(viewModel: viewModel)
         case .setUp:
-            if viewModel.experiment.circuitWiringTask != nil {
-                CircuitWiringStageView(viewModel: viewModel)
-            } else {
-                SetUpStageView(viewModel: viewModel)
-            }
+            SetUpStageView(viewModel: viewModel)
         case .coreExperiment:
             coreContent()
         case .practicalQuestions:
@@ -336,17 +332,6 @@ private struct CollectApparatusStageView: View {
     @State private var isChecking = false
     @State private var checkPassed = false
     @State private var isDraggingCard = false
-    /// Tap-to-place alternative to dragging: tap a shelf item to select it,
-    /// then tap the workbench to place it. Avoids requiring a precise drag
-    /// gesture for students who find dragging difficult.
-    @State private var selectedItem: LabApparatusItem?
-
-    /// Local named coordinate space shared by the shelf cards and the
-    /// workbench drop target. Using a local space (rather than `.global`)
-    /// avoids recomputing screen-relative coordinates \u{2014} including
-    /// safe-area/navigation-bar geometry \u{2014} on every single drag frame,
-    /// which is what made the drag feel stuttery.
-    fileprivate static let workspaceSpace = "labApparatusWorkspace"
 
     private var slots: [BenchSlot] { BenchSlot.layout(for: viewModel.experiment.apparatusItems) }
 
@@ -362,7 +347,7 @@ private struct CollectApparatusStageView: View {
                 LabCoachAvatar(size: 44)
                 WhiteboardCard(
                     eyebrow: "Step \(LabExperimentStage.collectApparatus.rawValue + 1)",
-                    text: "Drag apparatus from the shelf onto the workbench — or tap an item, then tap the workbench to place it."
+                    text: "Pick up apparatus from the shelf and carry it to its spot on the workbench."
                 )
             }
 
@@ -398,7 +383,6 @@ private struct CollectApparatusStageView: View {
         }
         .animation(Animation.spring(response: 0.35, dampingFraction: 0.7), value: viewModel.allApparatusPlaced)
         .animation(Animation.spring(response: 0.35, dampingFraction: 0.7), value: isChecking)
-        .coordinateSpace(name: Self.workspaceSpace)
         .onChange(of: viewModel.allApparatusPlaced) { _, allPlaced in
             guard allPlaced else { return }
             isChecking = true
@@ -428,14 +412,8 @@ private struct CollectApparatusStageView: View {
                         ShelfApparatusCard(
                             item: item,
                             isPlaced: viewModel.placedApparatus.contains(item.id),
-                            isSelected: selectedItem?.id == item.id,
                             onDragStateChange: { dragging in isDraggingCard = dragging },
-                            onDrop: { dropPoint in handleDrop(of: item, at: dropPoint) },
-                            onTap: {
-                                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-                                    selectedItem = (selectedItem?.id == item.id) ? nil : item
-                                }
-                            }
+                            onDrop: { dropPoint in handleDrop(of: item, at: dropPoint) }
                         )
                     }
                 }
@@ -465,17 +443,7 @@ private struct CollectApparatusStageView: View {
                         .position(x: geo.size.width * slot.point.x, y: geo.size.height * slot.point.y)
                 }
 
-                if let selected = selectedItem {
-                    Text("Tap here to place \(selected.name)")
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Color.accentColor.opacity(0.55), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .padding(.horizontal, 24)
-                        .transition(.opacity)
-                } else if viewModel.placedApparatus.isEmpty {
+                if viewModel.placedApparatus.isEmpty {
                     Text("Drag apparatus from the shelf onto the workbench.")
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(.white)
@@ -487,21 +455,15 @@ private struct CollectApparatusStageView: View {
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                guard let item = selectedItem else { return }
-                viewModel.placeApparatus(item, isCorrectDrop: true)
-                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) { selectedItem = nil }
-            }
             .background(
                 Color.clear
-                    .onAppear { benchFrame = geo.frame(in: .named(Self.workspaceSpace)) }
-                    .onChange(of: geo.size) { _, _ in benchFrame = geo.frame(in: .named(Self.workspaceSpace)) }
+                    .onAppear { benchFrame = geo.frame(in: .global) }
+                    .onChange(of: geo.size) { _, _ in benchFrame = geo.frame(in: .global) }
             )
         }
         .frame(height: 260)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(WorkbenchGlow(isActive: viewModel.placedApparatus.isEmpty || selectedItem != nil))
+        .overlay(WorkbenchGlow(isActive: viewModel.placedApparatus.isEmpty))
         .shadow(color: .black.opacity(0.18), radius: 10, x: 0, y: 6)
     }
 
@@ -649,10 +611,8 @@ private struct WorkbenchGlow: View {
 private struct ShelfApparatusCard: View {
     let item: LabApparatusItem
     let isPlaced: Bool
-    let isSelected: Bool
     let onDragStateChange: (Bool) -> Void
     let onDrop: (CGPoint) -> Void
-    let onTap: () -> Void
 
     @State private var dragTranslation: CGSize = .zero
     @State private var isDragging = false
@@ -685,47 +645,28 @@ private struct ShelfApparatusCard: View {
         .frame(width: 92)
         .padding(10)
         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.accentColor, lineWidth: isSelected ? 3 : 0)
-        )
         .opacity(isPlaced ? 0.35 : 1)
-        // Captured on the card's static, pre-drag layout (before scale/offset
-        // are applied below) so this frame never needs to be recomputed as
-        // the card moves \u{2014} that per-frame geometry recomputation, tied to
-        // the animated node itself, was the main source of drag stutter.
-        .background(
-            GeometryReader { geo in
-                Color.clear
-                    .onAppear { cardFrame = geo.frame(in: .named(CollectApparatusStageView.workspaceSpace)) }
-                    .onChange(of: geo.size) { _, _ in
-                        cardFrame = geo.frame(in: .named(CollectApparatusStageView.workspaceSpace))
-                    }
-            }
-        )
         .scaleEffect(isDragging ? 1.1 : 1)
         .rotationEffect(rotation)
         .offset(x: dragTranslation.width, y: dragTranslation.height - (isDragging ? 14 : 0))
         .shadow(color: .black.opacity(isDragging ? 0.28 : 0.1), radius: isDragging ? 14 : 4, x: 0, y: isDragging ? 10 : 2)
         .zIndex(isDragging ? 1 : 0)
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { cardFrame = geo.frame(in: .global) }
+                    .onChange(of: geo.frame(in: .global)) { _, newFrame in
+                        if !isDragging { cardFrame = newFrame }
+                    }
+            }
+        )
         .highPriorityGesture(
-            DragGesture(minimumDistance: 4, coordinateSpace: .named(CollectApparatusStageView.workspaceSpace))
+            DragGesture(minimumDistance: 4, coordinateSpace: .global)
                 .onChanged { value in
                     guard !isPlaced else { return }
                     if !isDragging { onDragStateChange(true) }
                     isDragging = true
-                    // Explicitly disable animation for this per-frame update.
-                    // Without this, an ambient `.animation(value:)` from an
-                    // ancestor view (used elsewhere in this stage for the
-                    // "all placed"/"checking" transitions) can otherwise get
-                    // inherited by this transaction, making the card visibly
-                    // lag or spring behind the finger instead of tracking it
-                    // 1:1 \u{2014} that lag was the main "not smooth" complaint.
-                    var transaction = Transaction()
-                    transaction.disablesAnimations = true
-                    withTransaction(transaction) {
-                        dragTranslation = value.translation
-                    }
+                    dragTranslation = value.translation
                 }
                 .onEnded { value in
                     guard !isPlaced else { return }
@@ -741,10 +682,6 @@ private struct ShelfApparatusCard: View {
                     }
                 }
         )
-        .onTapGesture {
-            guard !isPlaced else { return }
-            onTap()
-        }
         .allowsHitTesting(!isPlaced)
         .popover(isPresented: $showingInfo) {
             ApparatusInfoView(item: item)
@@ -928,16 +865,6 @@ private struct PracticalQuestionRow: View {
         }
     }
 
-    private var trimmedAnswer: String { answer.trimmingCharacters(in: .whitespacesAndNewlines) }
-
-    /// Same lightweight keyword-match philosophy as the final scoring in
-    /// `finishExperiment()` — mirrored here so feedback can show live per
-    /// question instead of only in the Stage 10 summary.
-    private var matchedKeyword: Bool {
-        let lower = trimmedAnswer.lowercased()
-        return question.modelAnswerKeywords.contains { lower.contains($0.lowercased()) }
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(question.prompt).font(.subheadline.weight(.medium))
@@ -949,29 +876,9 @@ private struct PracticalQuestionRow: View {
             Text(marksLabel)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-
-            if !trimmedAnswer.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Label(
-                        matchedKeyword ? "Touches on the key point" : "Compare with the model answer below",
-                        systemImage: matchedKeyword ? "checkmark.circle.fill" : "exclamationmark.circle.fill"
-                    )
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(matchedKeyword ? .green : .orange)
-
-                    Text("Model answer: \(question.modelAnswer)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .transition(.opacity)
-            }
         }
         .padding(12)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .animation(.easeInOut(duration: 0.2), value: trimmedAnswer.isEmpty)
     }
 }
 

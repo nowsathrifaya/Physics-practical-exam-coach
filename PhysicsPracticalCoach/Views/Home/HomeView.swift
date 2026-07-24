@@ -33,21 +33,9 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 22) {
                 header
 
-                ExamCountdownCard()
-
                 ContinueLearningCard(homeViewModel: homeViewModel, profile: profile)
 
                 TodayProgressCard(progress: homeViewModel.todayProgress, streakDays: homeViewModel.userStats.streakDays)
-
-                NavigationLink {
-                    if let resumed = LastStudiedNoteStore.resolve(curriculum: homeViewModel.curriculum) {
-                        StudyNoteCategoryDetailView(category: resumed.category, curriculum: homeViewModel.curriculum, resumeAtIndex: resumed.pageIndex)
-                    } else {
-                        StudyNotesListView(curriculum: homeViewModel.curriculum)
-                    }
-                } label: {
-                    LearnHeroCard(resumed: LastStudiedNoteStore.resolve(curriculum: homeViewModel.curriculum))
-                }
 
                 sectionHeader("Start here")
                 featureGrid
@@ -423,141 +411,6 @@ private struct DailyChallengeBanner: View {
 }
 
 // MARK: - Shared card components
-
-/// Full-width, larger-than-grid treatment for the Learn tab — deliberately
-/// not just a fifth tile squeezed into `featureGrid`, since a hero feature
-/// should read as more prominent than the other four, not equal to them.
-/// Shows "Continue reading: <note title>" and resumes at that exact page
-/// when the student has read something before, falling back to a generic
-/// invitation into the Study Notes list otherwise.
-private struct LearnHeroCard: View {
-    let resumed: (category: StudyNoteCategory, pageIndex: Int, note: StudyNote)?
-
-    private var title: String { resumed == nil ? "Learn" : "Continue reading" }
-    private var subtitle: String {
-        guard let resumed else { return "Study notes & concept walkthroughs for every topic" }
-        return "\(resumed.note.title) · \(resumed.category.label)"
-    }
-
-    var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: "book.fill")
-                .font(.system(size: 30))
-                .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
-                .background(Color.blue.gradient, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.title3.bold()).foregroundStyle(.primary)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 8)
-
-            Image(systemName: "chevron.right")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(Color.blue.opacity(0.25), lineWidth: 1.5)
-        )
-    }
-}
-
-/// Shows "X days to go" once the student has set an exam date, or a CTA
-/// to set one if they haven't. Self-contained — reads/writes
-/// `ExamDateStore` directly and presents its own sheet to set the date,
-/// so it works from Home without needing to hop to Settings (which has
-/// the same control too, for anyone who prefers to set it there instead).
-private struct ExamCountdownCard: View {
-    @State private var examDate: Date?
-    @State private var showingPicker = false
-    @State private var draftDate: Date = Date()
-
-    private var daysRemaining: Int? { ExamDateStore.daysRemaining() }
-
-    var body: some View {
-        Button {
-            draftDate = examDate ?? Date()
-            showingPicker = true
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 26))
-                    .foregroundStyle(.white)
-                    .frame(width: 50, height: 50)
-                    .background(Color.orange.gradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    if let days = daysRemaining {
-                        Text(countdownHeadline(for: days)).font(.title3.bold()).foregroundStyle(.primary)
-                        Text("until your Physics Practical exam").font(.caption).foregroundStyle(.secondary)
-                    } else {
-                        Text("Set your exam date").font(.title3.bold()).foregroundStyle(.primary)
-                        Text("See how many days you have left to prepare").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                Spacer(minLength: 8)
-                Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.orange.opacity(0.25), lineWidth: 1.5))
-        }
-        .buttonStyle(.plain)
-        .onAppear { examDate = ExamDateStore.get() }
-        .sheet(isPresented: $showingPicker) {
-            NavigationStack {
-                VStack(spacing: 20) {
-                    DatePicker("Exam date", selection: $draftDate, in: Date()..., displayedComponents: .date)
-                        .datePickerStyle(.graphical)
-                        .padding(.horizontal)
-
-                    if examDate != nil {
-                        Button("Clear exam date", role: .destructive) {
-                            ExamDateStore.set(nil)
-                            examDate = nil
-                            showingPicker = false
-                        }
-                    }
-                    Spacer()
-                }
-                .padding(.top)
-                .navigationTitle("Exam Countdown")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { showingPicker = false }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") {
-                            ExamDateStore.set(draftDate)
-                            examDate = draftDate
-                            showingPicker = false
-                        }
-                        .fontWeight(.semibold)
-                    }
-                }
-            }
-            .presentationDetents([.medium])
-        }
-    }
-
-    private func countdownHeadline(for days: Int) -> String {
-        if days < 0 { return "Exam date has passed" }
-        if days == 0 { return "Exam is today — good luck!" }
-        if days == 1 { return "1 day to go" }
-        return "\(days) days to go"
-    }
-}
 
 struct FeatureCard: View {
     let title: String

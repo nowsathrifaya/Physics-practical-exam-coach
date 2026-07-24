@@ -92,8 +92,6 @@ enum GraphCoachType: String, CaseIterable, Codable, Identifiable {
     case tSquaredVsLength = "T_SQUARED_VS_LENGTH"
     case sinIVsSinR = "SIN_I_VS_SIN_R"
     case potentialGradient = "POTENTIAL_GRADIENT"
-    case reciprocalLensDistances = "RECIPROCAL_LENS_DISTANCES"
-    case resistanceVsLength = "RESISTANCE_VS_LENGTH"
 
     var id: String { rawValue }
 
@@ -150,20 +148,6 @@ enum GraphCoachType: String, CaseIterable, Codable, Identifiable {
                 yLabel: "Voltage V", yUnit: "V",
                 gradientMeaning: "Gradient gives the potential gradient K = I \u{00D7} r (volts per metre of wire)."
             )
-        case .reciprocalLensDistances:
-            return Definition(
-                label: "1/v vs 1/u (Converging Lens)",
-                xLabel: "1/u", xUnit: "cm\u{207B}\u{00B9}",
-                yLabel: "1/v", yUnit: "cm\u{207B}\u{00B9}",
-                gradientMeaning: "Gradient should be about \u{2212}1 \u{2014} a check on your readings, not the answer. The y-intercept equals 1/f, so f = 1 \u{00F7} intercept."
-            )
-        case .resistanceVsLength:
-            return Definition(
-                label: "Resistance vs length (Resistance Wire)",
-                xLabel: "Length l", xUnit: "m",
-                yLabel: "Resistance R", yUnit: "\u{03A9}",
-                gradientMeaning: "Gradient gives resistivity \u{00F7} cross-sectional area (R = \u{03C1}l/A), so \u{03C1} = gradient \u{00D7} A."
-            )
         }
     }
 
@@ -185,6 +169,10 @@ enum SimulationType: String, CaseIterable, Codable, Identifiable {
     case densityDisplacement = "DENSITY_DISPLACEMENT"
     case coolingCurve = "COOLING_CURVE"
     case filamentLamp = "FILAMENT_LAMP"
+    case balancedForces = "BALANCED_FORCES"
+    case centreOfGravity = "CENTRE_OF_GRAVITY"
+    case magneticFieldWire = "MAGNETIC_FIELD_WIRE"
+    case planeMirrorReflection = "PLANE_MIRROR_REFLECTION"
 
     var id: String { rawValue }
 
@@ -202,6 +190,10 @@ enum SimulationType: String, CaseIterable, Codable, Identifiable {
         case .densityDisplacement: return "Density by Displacement"
         case .coolingCurve: return "Cooling Curve"
         case .filamentLamp: return "Filament Lamp I-V Characteristic"
+        case .balancedForces: return "Balanced & Unbalanced Forces"
+        case .centreOfGravity: return "Centre of Gravity of a Lamina"
+        case .magneticFieldWire: return "Magnetic Effect of a Current"
+        case .planeMirrorReflection: return "Law of Reflection (Plane Mirror)"
         }
     }
 
@@ -231,6 +223,14 @@ enum SimulationType: String, CaseIterable, Codable, Identifiable {
             return "Watch a heated liquid cool over time. Record readings to build a temperature-time graph."
         case .filamentLamp:
             return "Vary the voltage across a filament lamp and record current to see why it isn't ohmic."
+        case .balancedForces:
+            return "Pull a trolley with a known force over a pulley and time it over a fixed distance. Verify F = ma."
+        case .centreOfGravity:
+            return "Hang an irregular lamina from three different points and trace the plumb line each time. Find where the lines cross."
+        case .magneticFieldWire:
+            return "Place a plotting compass around a current-carrying wire and reverse the current to see the field pattern flip."
+        case .planeMirrorReflection:
+            return "Set the angle of incidence on a plane mirror and measure the angle of reflection with a protractor."
         }
     }
 }

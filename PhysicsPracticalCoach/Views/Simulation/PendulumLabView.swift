@@ -202,7 +202,6 @@ final class PendulumExperimentViewModel {
             derivedUnit: "s"
         )
         readings.append(reading)
-        SoundManager.shared.play(.measurement)
         apparatus.rearmForNextTrial()
     }
 
@@ -305,7 +304,7 @@ struct PendulumLabView: View {
                     if lab.phase == .settingLength {
                         LabCanvasHelpers.drawVerticalRuler(
                             context: context, originX: pivot.x - 70, topY: pivot.y,
-                            heightPx: maxPendulumPx, maxValue: 1.5, minorStep: 0.1, unit: "m"
+                            heightPx: maxPendulumPx, maxValue: 1.5, minorStep: 0.1
                         )
                     }
 
@@ -313,17 +312,6 @@ struct PendulumLabView: View {
                     string.move(to: pivot)
                     string.addLine(to: bob)
                     context.stroke(string, with: .color(Color(hex: "#0F3D38")), lineWidth: 3)
-
-                    // Retort stand clamp at the pivot — same treatment as
-                    // Spring Lab, so the string visibly hangs from a real
-                    // fixture rather than an invisible point in space.
-                    let clampSize = CGSize(width: 38, height: 14)
-                    let clampRect = CGRect(x: pivot.x - clampSize.width / 2, y: pivot.y - clampSize.height, width: clampSize.width, height: clampSize.height)
-                    context.fill(
-                        Path(roundedRect: clampRect, cornerRadius: 3),
-                        with: .linearGradient(Gradient(colors: [ApparatusPalette.steelLight, ApparatusPalette.steelMid]), startPoint: CGPoint(x: 0, y: clampRect.minY), endPoint: CGPoint(x: 0, y: clampRect.maxY))
-                    )
-                    context.stroke(Path(roundedRect: clampRect, cornerRadius: 3), with: .color(ApparatusPalette.steelDark), lineWidth: 1)
 
                     LabCanvasHelpers.drawWeight(context: context, center: pivot, radiusPx: 5, color: Color(hex: "#0F5A4F"))
                     LabCanvasHelpers.drawWeight(

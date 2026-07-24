@@ -12,9 +12,9 @@
 //  triangle tool, and focused practice modes. The original dataset
 //  generation and gradient-marking logic (`GraphDatasetGenerator`,
 //  `GraphGradientMarker`) is untouched and reused as-is for step 6/7, and
-//  `ScatterPlotCanvasView` is kept exactly as before since four other lab
-//  views (`OhmsLawLabView`, `PotentiometerLabView`, `SpringLabView`,
-//  `LensLabView`) render their own student datasets with it.
+//  `ScatterPlotCanvasView` is kept exactly as before since three other lab
+//  views (`OhmsLawLabView`, `PotentiometerLabView`, `SpringLabView`) render
+//  their own student datasets with it.
 //
 
 import SwiftUI
@@ -40,12 +40,9 @@ func formatGridTick(_ value: Double) -> String {
     return String(format: "%.2g", value)
 }
 
-/// Draws real-graph-paper-style axes: each major square (one `stepX`/`stepY`
-/// unit — the scale the student chose) is subdivided into `minorDivisions`
-/// finer, unlabeled minor gridlines, with darker major gridlines and a
-/// numbered tick label at every major line (e.g. 0, 2, 4, 6, 8, 10). This
-/// mirrors real exam graph paper: fine squares for precise plotting, with
-/// only the major lines carrying numbers.
+/// Draws real-graph-paper-style axes: light minor gridlines at every step,
+/// darker major gridlines every `majorEvery` steps, and numbered tick
+/// labels along both axes at each major line (e.g. 0, 2, 4, 6, 8, 10).
 func drawGraphPaper(
     context: GraphicsContext,
     plotRect: CGRect,
@@ -53,48 +50,46 @@ func drawGraphPaper(
     maxY: Double,
     stepX: Double,
     stepY: Double,
-    minorDivisions: Int = 5
+    majorEvery: Int = 5
 ) {
     guard stepX > 0, stepY > 0, maxX > 0, maxY > 0 else { return }
-    let majorColumns = max(1, Int((maxX / stepX).rounded()))
-    let majorRows = max(1, Int((maxY / stepY).rounded()))
-    let minorColumns = majorColumns * minorDivisions
-    let minorRows = majorRows * minorDivisions
+    let columns = max(1, Int((maxX / stepX).rounded()))
+    let rows = max(1, Int((maxY / stepY).rounded()))
 
     var minor = Path()
     var major = Path()
 
-    for c in 0...minorColumns {
-        let x = plotRect.minX + plotRect.width * CGFloat(c) / CGFloat(minorColumns)
+    for c in 0...columns {
+        let x = plotRect.minX + plotRect.width * CGFloat(c) / CGFloat(columns)
         var line = Path()
         line.move(to: CGPoint(x: x, y: plotRect.minY))
         line.addLine(to: CGPoint(x: x, y: plotRect.maxY))
-        if c % minorDivisions == 0 { major.addPath(line) } else { minor.addPath(line) }
+        if c % majorEvery == 0 { major.addPath(line) } else { minor.addPath(line) }
     }
-    for r in 0...minorRows {
+    for r in 0...rows {
         // r = 0 at the bottom (the origin), increasing upward — matches
         // domain values, which grow upward on the screen.
-        let y = plotRect.maxY - plotRect.height * CGFloat(r) / CGFloat(minorRows)
+        let y = plotRect.maxY - plotRect.height * CGFloat(r) / CGFloat(rows)
         var line = Path()
         line.move(to: CGPoint(x: plotRect.minX, y: y))
         line.addLine(to: CGPoint(x: plotRect.maxX, y: y))
-        if r % minorDivisions == 0 { major.addPath(line) } else { minor.addPath(line) }
+        if r % majorEvery == 0 { major.addPath(line) } else { minor.addPath(line) }
     }
 
-    context.stroke(minor, with: .color(.secondary.opacity(0.2)), lineWidth: 0.5)
-    context.stroke(major, with: .color(.secondary.opacity(0.6)), lineWidth: 1)
+    context.stroke(minor, with: .color(.secondary.opacity(0.15)), lineWidth: 0.5)
+    context.stroke(major, with: .color(.secondary.opacity(0.45)), lineWidth: 1)
 
-    for c in stride(from: 0, through: minorColumns, by: minorDivisions) {
-        let x = plotRect.minX + plotRect.width * CGFloat(c) / CGFloat(minorColumns)
+    for c in stride(from: 0, through: columns, by: majorEvery) {
+        let x = plotRect.minX + plotRect.width * CGFloat(c) / CGFloat(columns)
         context.draw(
-            Text(formatGridTick(Double(c / minorDivisions) * stepX)).font(.system(size: 9)).foregroundStyle(.secondary),
+            Text(formatGridTick(Double(c) * stepX)).font(.system(size: 9)).foregroundStyle(.secondary),
             at: CGPoint(x: x, y: plotRect.maxY + 11)
         )
     }
-    for r in stride(from: 0, through: minorRows, by: minorDivisions) {
-        let y = plotRect.maxY - plotRect.height * CGFloat(r) / CGFloat(minorRows)
+    for r in stride(from: 0, through: rows, by: majorEvery) {
+        let y = plotRect.maxY - plotRect.height * CGFloat(r) / CGFloat(rows)
         context.draw(
-            Text(formatGridTick(Double(r / minorDivisions) * stepY)).font(.system(size: 9)).foregroundStyle(.secondary),
+            Text(formatGridTick(Double(r) * stepY)).font(.system(size: 9)).foregroundStyle(.secondary),
             at: CGPoint(x: plotRect.minX - 15, y: y)
         )
     }
@@ -220,12 +215,8 @@ final class GraphCoachPracticeViewModel {
     private(set) var stepIndex = 0
     private(set) var finished = false
 
-    // Step 1 — scale (independent per axis, since X and Y ranges can differ
-    // in magnitude by a lot — e.g. extension in metres vs force in newtons —
-    // and forcing one shared "units per square" value onto both axes left
-    // whichever axis had the smaller range with almost no gridlines at all).
-    var selectedScaleX: Double?
-    var selectedScaleY: Double?
+    // Step 1 — scale
+    var selectedScale: Double?
     // Step 2 — axis labels
     var xAxisLabelInput = ""
     var yAxisLabelInput = ""
@@ -267,8 +258,7 @@ final class GraphCoachPracticeViewModel {
     private func prefillSkippedSteps() {
         let firstStep = steps.first ?? 1
         if firstStep > 1 {
-            selectedScaleX = niceScaleCandidates(for: axisMaxX).last
-            selectedScaleY = niceScaleCandidates(for: axisMaxY).last
+            selectedScale = niceScaleCandidates(for: axisMaxX).last
             xAxisLabelInput = def.xLabel
             yAxisLabelInput = def.yLabel
             xUnitInput = def.xUnit
@@ -316,11 +306,8 @@ final class GraphCoachPracticeViewModel {
 
     // MARK: - Live checklist (updates instantly as the student works)
 
-    var scaleChosen: Bool { selectedScaleX != nil && selectedScaleY != nil }
-    var scaleOK: Bool {
-        guard let sx = selectedScaleX, let sy = selectedScaleY else { return false }
-        return isGoodScale(sx, maxValue: axisMaxX) && isGoodScale(sy, maxValue: axisMaxY)
-    }
+    var scaleChosen: Bool { selectedScale != nil }
+    var scaleOK: Bool { selectedScale.map { isGoodScale($0, maxValue: max(axisMaxX, axisMaxY)) } ?? false }
 
     var xLabelOK: Bool {
         xAxisLabelInput.trimmingCharacters(in: .whitespaces).lowercased()
@@ -332,14 +319,6 @@ final class GraphCoachPracticeViewModel {
     }
     var labelsOK: Bool { xLabelOK && yLabelOK }
 
-    /// Whether both axis label fields have something typed in, regardless
-    /// of whether it's the right word — gates Next; `labelsOK` (used for
-    /// checklist/grading) still requires the correct wording.
-    var labelsAttempted: Bool {
-        !xAxisLabelInput.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !yAxisLabelInput.trimmingCharacters(in: .whitespaces).isEmpty
-    }
-
     var xUnitOK: Bool {
         def.xUnit.isEmpty || xUnitInput.trimmingCharacters(in: .whitespaces).lowercased() == def.xUnit.lowercased()
     }
@@ -348,49 +327,19 @@ final class GraphCoachPracticeViewModel {
     }
     var unitsOK: Bool { xUnitOK && yUnitOK }
 
-    /// Whether the student has put *something* in each unit field that
-    /// actually needs one — used to gate Next, separately from `unitsOK`
-    /// (used for grading/checklist feedback). A wrong unit is still a
-    /// mistake worth showing in the checklist, but it shouldn't trap the
-    /// student on this step the way an empty field should.
-    var unitsAttempted: Bool {
-        (def.xUnit.isEmpty || !xUnitInput.trimmingCharacters(in: .whitespaces).isEmpty) &&
-        (def.yUnit.isEmpty || !yUnitInput.trimmingCharacters(in: .whitespaces).isEmpty)
-    }
-
     var titleOK: Bool { !titleInput.trimmingCharacters(in: .whitespaces).isEmpty }
 
     /// Fraction of the student's plotted points that land within a small
-    /// tolerance of *some* unmatched real data point — order-independent,
-    /// since a student tapping points in a different order than the
-    /// dataset's internal x-ascending order is not a plotting mistake.
+    /// tolerance of the real data point at the same index.
     var plottingAccuracy: Double {
         guard !plottedPoints.isEmpty else { return 0 }
         let tolerance = max(axisMaxX, axisMaxY) * 0.05
-        var unmatched = dataset.points
-        var matches = 0
-        for student in plottedPoints {
-            guard let closestIndex = unmatched.indices.min(by: { a, b in
-                distance(student, unmatched[a]) < distance(student, unmatched[b])
-            }) else { break }
-            if distance(student, unmatched[closestIndex]) <= tolerance {
-                matches += 1
-                unmatched.remove(at: closestIndex)
-            }
-        }
+        let matches = zip(plottedPoints, dataset.points).filter { student, real in
+            hypot((student.x - real.x) / max(axisMaxX, 0.001), (student.y - real.y) / max(axisMaxY, 0.001)) * max(axisMaxX, axisMaxY) <= tolerance
+        }.count
         return Double(matches) / Double(dataset.points.count)
     }
-    private func distance(_ a: GraphPoint, _ b: GraphPoint) -> Double {
-        hypot((a.x - b.x) / max(axisMaxX, 0.001), (a.y - b.y) / max(axisMaxY, 0.001)) * max(axisMaxX, axisMaxY)
-    }
     var plottingOK: Bool { plottedPoints.count >= dataset.points.count && plottingAccuracy >= 0.7 }
-
-    /// Whether every point has been placed, regardless of how accurate the
-    /// placement is — used to gate Next. Plotting inaccurately is still a
-    /// real mistake reflected in the checklist and final score, but it
-    /// shouldn't permanently block the student from moving on the way an
-    /// unplaced point should.
-    var plottingAttempted: Bool { plottedPoints.count >= dataset.points.count }
 
     /// How close the drawn line is to the true least-squares regression,
     /// measured as mean vertical distance at the data points' x-values.
@@ -418,38 +367,8 @@ final class GraphCoachPracticeViewModel {
     var isFirstStep: Bool { stepIndex == 0 }
     var isLastStep: Bool { stepIndex == steps.count - 1 }
 
-    /// Whether the *current* step's own requirement is satisfied — used to
-    /// gate the Next button so a student can't skip ahead (e.g. leaving the
-    /// axis label blank, or plotting zero points) and still see later steps
-    /// render as if that work were done.
-    var currentStepComplete: Bool {
-        switch currentStep {
-        case 1: return scaleChosen
-        case 2: return labelsAttempted
-        case 3: return unitsAttempted && titleOK
-        case 4: return plottingAttempted
-        case 5: return lineOK
-        case 6: return gradientTriangleReady && !studentGradientInput.trimmingCharacters(in: .whitespaces).isEmpty
-        default: return true
-        }
-    }
-
-    /// Short nudge shown under a disabled Next button, explaining what's
-    /// still needed to unlock the current step.
-    var currentStepIncompleteHint: String {
-        switch currentStep {
-        case 1: return "Choose a scale to continue."
-        case 2: return "Fill in both axis labels to continue."
-        case 3: return "Fill in the units and title to continue."
-        case 4: return "Plot all \(dataset.points.count) points to continue."
-        case 5: return "Balance the best-fit line through the trend to continue."
-        case 6: return "Tap two points on the line and enter your gradient to continue."
-        default: return ""
-        }
-    }
-
     func advance() {
-        guard !isLastStep, currentStepComplete else { return }
+        guard !isLastStep else { return }
         stepIndex += 1
     }
 
@@ -464,7 +383,6 @@ final class GraphCoachPracticeViewModel {
         let gradient = Double(studentGradientInput.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
         let outcome = marker.mark(dataset: dataset, studentGradient: gradient, curriculum: curriculum)
         result = outcome
-        SoundManager.shared.play(outcome.correct ? .success : .error)
         repository.save(
             curriculum: curriculum, mode: .graphCoach, target: graphType.label,
             score: outcome.score, maxScore: 100, feedback: outcome.feedback
@@ -478,7 +396,6 @@ final class GraphCoachPracticeViewModel {
     /// gradient to mark.
     func finishShortMode(onSaved: () -> Void) {
         let checklistScore = estimatedMarkOutOf10 * 10
-        SoundManager.shared.play(.complete)
         repository.save(
             curriculum: curriculum, mode: .graphCoach,
             target: "\(graphType.label) - \(mode.label)",
@@ -493,8 +410,7 @@ final class GraphCoachPracticeViewModel {
         dataset = generator.generate(type: graphType, seed: Int.random(in: 0...Int(Int32.max)), curriculum: curriculum)
         studentGradientInput = ""
         result = nil
-        selectedScaleX = nil
-        selectedScaleY = nil
+        selectedScale = nil
         xAxisLabelInput = ""; yAxisLabelInput = ""
         xUnitInput = ""; yUnitInput = ""
         titleInput = ""
@@ -606,26 +522,17 @@ struct GraphCoachPracticeView: View {
                             .buttonStyle(.bordered)
                     }
                     let isShortModeEnd = viewModel.isLastStep && viewModel.currentStep != 6
-                    VStack(spacing: 6) {
-                        Button(viewModel.isLastStep ? "Finish" : "Next") {
-                            inputFocused = false
-                            if isShortModeEnd {
-                                viewModel.finishShortMode(onSaved: { onSaved?() })
-                            } else {
-                                viewModel.advance()
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.purple)
-                        .frame(maxWidth: .infinity)
-                        .disabled(!viewModel.currentStepComplete)
-
-                        if !viewModel.currentStepComplete {
-                            Text(viewModel.currentStepIncompleteHint)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    Button(viewModel.isLastStep ? "Finish" : "Next") {
+                        inputFocused = false
+                        if isShortModeEnd {
+                            viewModel.finishShortMode(onSaved: { onSaved?() })
+                        } else {
+                            viewModel.advance()
                         }
                     }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.purple)
+                    .frame(maxWidth: .infinity)
                 }
             } else if !viewModel.isFirstStep {
                 Button("Back") { viewModel.retreat() }
@@ -740,46 +647,14 @@ private struct ScaleStepView: View {
     let viewModel: GraphCoachPracticeViewModel
 
     var body: some View {
-        StepCard(title: "Choose a scale", subtitle: "Pick a scale for each axis that uses more than half the graph paper.") {
-            VStack(alignment: .leading, spacing: 16) {
-                ScaleAxisPicker(
-                    title: "X-axis (\(viewModel.graphType.definition.xLabel))",
-                    candidates: viewModel.niceScaleCandidates(for: viewModel.axisMaxX),
-                    maxValue: viewModel.axisMaxX,
-                    viewModel: viewModel,
-                    selection: Binding(get: { viewModel.selectedScaleX }, set: { viewModel.selectedScaleX = $0 })
-                )
-                ScaleAxisPicker(
-                    title: "Y-axis (\(viewModel.graphType.definition.yLabel))",
-                    candidates: viewModel.niceScaleCandidates(for: viewModel.axisMaxY),
-                    maxValue: viewModel.axisMaxY,
-                    viewModel: viewModel,
-                    selection: Binding(get: { viewModel.selectedScaleY }, set: { viewModel.selectedScaleY = $0 })
-                )
-            }
-        }
-    }
-}
-
-/// One axis's row of scale candidates ("units per square") in the Scale
-/// step. Pulled out so X and Y can be chosen independently — each axis can
-/// have a very different range, so one shared scale value doesn't fit both.
-private struct ScaleAxisPicker: View {
-    let title: String
-    let candidates: [Double]
-    let maxValue: Double
-    let viewModel: GraphCoachPracticeViewModel
-    @Binding var selection: Double?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.subheadline.weight(.semibold))
+        StepCard(title: "Choose a scale", subtitle: "Pick a scale that uses more than half the graph paper.") {
+            let candidates = viewModel.niceScaleCandidates(for: max(viewModel.axisMaxX, viewModel.axisMaxY))
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 90))], spacing: 10) {
                 ForEach(candidates, id: \.self) { candidate in
-                    let selected = selection == candidate
-                    let good = viewModel.isGoodScale(candidate, maxValue: maxValue)
+                    let selected = viewModel.selectedScale == candidate
+                    let good = viewModel.isGoodScale(candidate, maxValue: max(viewModel.axisMaxX, viewModel.axisMaxY))
                     Button {
-                        withAnimation(.snappy) { selection = candidate }
+                        withAnimation(.snappy) { viewModel.selectedScale = candidate }
                     } label: {
                         VStack(spacing: 4) {
                             Text(String(format: "%.3g", candidate)).font(.headline)
@@ -862,80 +737,21 @@ private struct UnitsStepView: View {
 
 // MARK: - Step 4: Plot the data
 
-/// The raw (x, y) values the student is meant to plot. Without this, Step 4
-/// is a blank grid with no way to know where a point should go — this is
-/// the exam's results table, shown the same way it would sit on a real exam
-/// paper next to blank graph paper.
-private struct RawDataTableCard: View {
-    let definition: GraphCoachType.Definition
-    let points: [GraphPoint]
-
-    private func format(_ value: Double) -> String { String(format: "%.3g", value) }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Your results table").font(.caption.weight(.bold)).foregroundStyle(.secondary)
-            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
-                GridRow {
-                    Text("\(definition.xLabel)\(definition.xUnit.isEmpty ? "" : " / \(definition.xUnit)")").font(.caption.weight(.semibold))
-                    Text("\(definition.yLabel)\(definition.yUnit.isEmpty ? "" : " / \(definition.yUnit)")").font(.caption.weight(.semibold))
-                }
-                Divider().gridCellColumns(2)
-                ForEach(points, id: \.self) { p in
-                    GridRow {
-                        Text(format(p.x)).font(.caption.monospacedDigit())
-                        Text(format(p.y)).font(.caption.monospacedDigit())
-                    }
-                }
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-    }
-}
-
 private struct PlotStepView: View {
     let viewModel: GraphCoachPracticeViewModel
-    /// Zoom is a toggle into a larger, scrollable canvas — same pattern as
-    /// the dial gauges' "Zoom meters" — rather than a pinch gesture, since
-    /// a pinch/pan gesture layered on top of the existing tap-to-place and
-    /// drag-to-adjust-point gestures on this same canvas would risk the
-    /// two fighting over the same touch.
-    @State private var isZoomed = false
 
     var body: some View {
-        StepCard(title: "Plot the data", subtitle: "Use the results table below — tap the grid to place each point, drag to fine-tune.") {
+        StepCard(title: "Plot the data", subtitle: "Tap anywhere on the grid to place a point. Drag a point to fine-tune it.") {
             VStack(alignment: .leading, spacing: 10) {
-                RawDataTableCard(definition: viewModel.graphType.definition, points: viewModel.dataset.points)
-
-                GeometryReader { outerGeo in
-                    ScrollView([.horizontal, .vertical], showsIndicators: true) {
-                        InteractivePlotCanvas(
-                            definition: viewModel.graphType.definition,
-                            axisMaxX: viewModel.axisMaxX,
-                            axisMaxY: viewModel.axisMaxY,
-                            scaleX: viewModel.selectedScaleX,
-                            scaleY: viewModel.selectedScaleY,
-                            targetCount: viewModel.dataset.points.count,
-                            points: Binding(get: { viewModel.plottedPoints }, set: { viewModel.plottedPoints = $0 })
-                        )
-                        .frame(
-                            width: outerGeo.size.width * (isZoomed ? 2.2 : 1),
-                            height: outerGeo.size.height * (isZoomed ? 2.2 : 1)
-                        )
-                    }
-                }
+                InteractivePlotCanvas(
+                    definition: viewModel.graphType.definition,
+                    axisMaxX: viewModel.axisMaxX,
+                    axisMaxY: viewModel.axisMaxY,
+                    scale: viewModel.selectedScale,
+                    targetCount: viewModel.dataset.points.count,
+                    points: Binding(get: { viewModel.plottedPoints }, set: { viewModel.plottedPoints = $0 })
+                )
                 .frame(height: 280)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { isZoomed.toggle() }
-                } label: {
-                    Label(isZoomed ? "Zoom out" : "Zoom in to plot precisely", systemImage: isZoomed ? "minus.magnifyingglass" : "plus.magnifyingglass")
-                        .font(.caption.weight(.semibold))
-                }
-                .buttonStyle(.bordered)
 
                 HStack {
                     Text("\(viewModel.plottedPoints.count) of \(viewModel.dataset.points.count) points placed")
@@ -999,15 +815,14 @@ private struct InteractivePlotCanvas: View {
     let definition: GraphCoachType.Definition
     let axisMaxX: Double
     let axisMaxY: Double
-    let scaleX: Double?
-    let scaleY: Double?
+    let scale: Double?
     let targetCount: Int
     @Binding var points: [GraphPoint]
 
     @State private var plotFrame: CGRect = .zero
 
-    private var effectiveScaleX: Double { scaleX ?? niceGridStep(for: axisMaxX) }
-    private var effectiveScaleY: Double { scaleY ?? niceGridStep(for: axisMaxY) }
+    private var effectiveScaleX: Double { scale ?? axisMaxX / 8 }
+    private var effectiveScaleY: Double { scale ?? axisMaxY / 8 }
 
     var body: some View {
         GeometryReader { geo in
@@ -1070,16 +885,12 @@ private struct InteractivePlotCanvas: View {
         return GraphPoint(x: max(0, fx) * axisMaxX, y: max(0, fy) * axisMaxY)
     }
 
-    /// Snaps a screen point to the nearest minor grid intersection — the
-    /// finer subdivisions now drawn on the graph paper, five per major
-    /// square — so plotting resolution matches what the student can
-    /// actually see and aim for, not just the coarser labelled lines.
+    /// Snaps a screen point to the nearest grid intersection implied by the
+    /// chosen scale.
     private func snap(_ screen: CGPoint, plotRect: CGRect) -> CGPoint {
         let domain = domainPoint(from: screen, plotRect: plotRect)
-        let minorStepX = effectiveScaleX / 5
-        let minorStepY = effectiveScaleY / 5
-        let snappedX = (domain.x / minorStepX).rounded() * minorStepX
-        let snappedY = (domain.y / minorStepY).rounded() * minorStepY
+        let snappedX = (domain.x / effectiveScaleX).rounded() * effectiveScaleX
+        let snappedY = (domain.y / effectiveScaleY).rounded() * effectiveScaleY
         return CGPoint(
             x: plotRect.minX + CGFloat(snappedX / axisMaxX) * plotRect.width,
             y: plotRect.maxY - CGFloat(snappedY / axisMaxY) * plotRect.height
@@ -1091,30 +902,16 @@ private struct InteractivePlotCanvas: View {
 
 private struct BestFitStepView: View {
     let viewModel: GraphCoachPracticeViewModel
-    @State private var isFreehand = false
 
     var body: some View {
-        StepCard(
-            title: "Draw the best-fit line",
-            subtitle: isFreehand
-                ? "Swipe once across the trend in a single stroke, like a pencil on paper — don't join every point."
-                : "Drag the two handles so the line balances the scatter — don't join every point."
-        ) {
-            RawDataTableCard(definition: viewModel.graphType.definition, points: viewModel.dataset.points)
-
-            Button(isFreehand ? "\u{1F590}\u{FE0F} Switch to drag handles" : "\u{270F}\u{FE0F} Draw freehand instead") {
-                isFreehand.toggle()
-            }
-            .font(.caption)
-
+        StepCard(title: "Draw the best-fit line", subtitle: "Drag the two handles so the line balances the scatter — don't join every point.") {
             BestFitLineCanvas(
                 definition: viewModel.graphType.definition,
                 axisMaxX: viewModel.axisMaxX,
                 axisMaxY: viewModel.axisMaxY,
-                points: viewModel.plottedPoints,
+                points: viewModel.plottedPoints.isEmpty ? viewModel.dataset.points : viewModel.plottedPoints,
                 start: Binding(get: { viewModel.lineStart }, set: { viewModel.lineStart = $0 }),
-                end: Binding(get: { viewModel.lineEnd }, set: { viewModel.lineEnd = $0 }),
-                isFreehand: isFreehand
+                end: Binding(get: { viewModel.lineEnd }, set: { viewModel.lineEnd = $0 })
             )
             .frame(height: 280)
 
@@ -1128,16 +925,8 @@ private struct BestFitStepView: View {
     }
 }
 
-/// Draws the scatter, plus a straight line the student positions either by
-/// dragging two large handles, or — when `isFreehand` is true — by swiping
-/// a single continuous stroke across the plot area. The stroke itself is
-/// never graded directly (a shaky finger stroke is not a meaningful
-/// "wobbly line" penalty the way it would be on paper): on release it's
-/// least-squares fitted with the same `LinearRegression` the checklist
-/// already uses, and only the resulting straight line becomes `start`/`end`
-/// — so freehand mode is a genuinely different *input* gesture feeding the
-/// exact same grading (`lineQuality`/`lineOK`) as the handle-drag mode,
-/// with zero new grading logic to keep in sync.
+/// Draws the scatter, plus a straight line between two large draggable
+/// handles the student positions to represent their best-fit line.
 /// A large draggable line-endpoint handle. Same safe local-offset drag
 /// pattern as `DraggableGraphPoint`: moves live during the gesture via a
 /// purely visual offset, and commits its real position once on release.
@@ -1173,9 +962,6 @@ private struct BestFitLineCanvas: View {
     let points: [GraphPoint]
     @Binding var start: CGPoint
     @Binding var end: CGPoint
-    var isFreehand: Bool = false
-
-    @State private var strokeScreenPoints: [CGPoint] = []
 
     var body: some View {
         GeometryReader { geo in
@@ -1215,57 +1001,13 @@ private struct BestFitLineCanvas: View {
                     line.move(to: startScreen)
                     line.addLine(to: endScreen)
                     context.stroke(line, with: .color(.purple), lineWidth: 2.5)
-
-                    if strokeScreenPoints.count > 1 {
-                        var stroke = Path()
-                        stroke.move(to: strokeScreenPoints[0])
-                        for p in strokeScreenPoints.dropFirst() { stroke.addLine(to: p) }
-                        context.stroke(stroke, with: .color(.orange), style: StrokeStyle(lineWidth: 2.5, lineCap: .round, dash: [1, 6]))
-                    }
                 }
 
-                if isFreehand {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .gesture(
-                            DragGesture(minimumDistance: 1, coordinateSpace: .local)
-                                .onChanged { value in strokeScreenPoints.append(value.location) }
-                                .onEnded { _ in
-                                    commitFreehandStroke(plotRect: plotRect)
-                                    strokeScreenPoints = []
-                                }
-                        )
-                } else {
-                    handle(at: startScreen) { newValue in start = fraction(for: newValue, plotRect: plotRect) }
-                    handle(at: endScreen) { newValue in end = fraction(for: newValue, plotRect: plotRect) }
-                }
+                handle(at: startScreen) { newValue in start = fraction(for: newValue, plotRect: plotRect) }
+                handle(at: endScreen) { newValue in end = fraction(for: newValue, plotRect: plotRect) }
             }
         }
         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-    }
-
-    /// Least-squares fits the raw stroke (converted from screen space into
-    /// real data units, same conversion the handle-drag path already uses)
-    /// and re-expresses the result as the two fractional endpoints
-    /// `start`/`end` expect — a stroke becomes a straight line the same
-    /// way a student's wobbly pencil line is judged by its overall trend,
-    /// not its wobble.
-    private func commitFreehandStroke(plotRect: CGRect) {
-        guard strokeScreenPoints.count >= 2 else { return }
-        let domainPoints: [RegressionPoint] = strokeScreenPoints.map { screen in
-            let f = fraction(for: screen, plotRect: plotRect)
-            return RegressionPoint(x: Double(f.x) * axisMaxX, y: Double(1 - f.y) * axisMaxY)
-        }
-        // A near-vertical swipe (all points at ~same x) has no meaningful
-        // slope to fit — ignore it rather than committing a wild line.
-        let xSpread = (domainPoints.map(\.x).max() ?? 0) - (domainPoints.map(\.x).min() ?? 0)
-        guard xSpread > axisMaxX * 0.1 else { return }
-
-        let regression = LinearRegression.fit(domainPoints)
-        let y0 = LinearRegression.yAt(0, result: regression)
-        let y1 = LinearRegression.yAt(axisMaxX, result: regression)
-        start = CGPoint(x: 0, y: min(max(1 - y0 / axisMaxY, -0.5), 1.5))
-        end = CGPoint(x: 1, y: min(max(1 - y1 / axisMaxY, -0.5), 1.5))
     }
 
     private func handle(at position: CGPoint, onMove: @escaping (CGPoint) -> Void) -> some View {
@@ -1299,7 +1041,7 @@ private struct GradientStepView: View {
                     axisMaxY: viewModel.axisMaxY,
                     lineStart: viewModel.lineStart,
                     lineEnd: viewModel.lineEnd,
-                    points: viewModel.plottedPoints,
+                    points: viewModel.plottedPoints.isEmpty ? viewModel.dataset.points : viewModel.plottedPoints,
                     tapA: Binding(get: { viewModel.gradientTapA }, set: { viewModel.gradientTapA = $0 }),
                     tapB: Binding(get: { viewModel.gradientTapB }, set: { viewModel.gradientTapB = $0 })
                 )
