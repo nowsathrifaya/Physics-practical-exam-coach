@@ -106,6 +106,9 @@ struct GraphCoachListView: View {
     @State private var tip = GraphExamTips.random()
 
     var body: some View {
+        if !PurchaseManager.shared.isPro {
+            GatedContentView(context: "Unlock Graph Coach")
+        } else {
         List {
             Section {
                 Text(tip)
@@ -151,6 +154,7 @@ struct GraphCoachListView: View {
             }
         }
         .navigationTitle("Graph Coach")
+        }
     }
 
     @ViewBuilder

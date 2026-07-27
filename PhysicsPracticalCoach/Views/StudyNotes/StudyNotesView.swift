@@ -473,7 +473,9 @@ struct StudyNoteCategoryDetailView: View {
 
     var body: some View {
         Group {
-            if notes.isEmpty {
+            if !FreeContentPolicy.isStudyNoteCategoryFree(category) && !PurchaseManager.shared.isPro {
+                GatedContentView(context: "Unlock \(category.label) and 7 more Study Notes categories")
+            } else if notes.isEmpty {
                 ContentUnavailableView("No notes here yet", systemImage: "book")
             } else {
                 PagedReaderView(

@@ -33,6 +33,7 @@ struct SimulationListView: View {
     private static var labBuiltTypes: Set<SimulationType> { Set(SimulationDestinationView.registry.keys) }
 
     var body: some View {
+        let purchases = PurchaseManager.shared
         List(profile.simulations) { type in
             NavigationLink {
                 simulationDestination(for: type)
@@ -45,6 +46,11 @@ struct SimulationListView: View {
                                 .padding(.horizontal, 6).padding(.vertical, 2)
                                 .background(Color.accentColor.opacity(0.15), in: Capsule())
                                 .foregroundStyle(Color.accentColor)
+                        }
+                        if !FreeContentPolicy.isSimulationFree(type) && !purchases.isPro {
+                            Image(systemName: "lock.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
                     }
                     Text(type.descriptionText).font(.caption).foregroundStyle(.secondary).lineLimit(2)
@@ -99,7 +105,11 @@ struct SimulationDestinationView: View {
     var body: some View {
         let repository = AttemptRepository(modelContext: modelContext)
         if let factory = Self.registry[type] {
-            factory(curriculum, repository)
+            if FreeContentPolicy.isSimulationFree(type) || PurchaseManager.shared.isPro {
+                factory(curriculum, repository)
+            } else {
+                GatedContentView(context: "Unlock \(type.label) and 9 more Virtual Labs")
+            }
         } else {
             GenericSimulationView(type: type)
         }

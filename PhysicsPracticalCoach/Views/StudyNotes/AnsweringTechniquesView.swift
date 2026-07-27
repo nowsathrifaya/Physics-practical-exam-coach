@@ -216,6 +216,9 @@ struct AnsweringTechniquesListView: View {
     }
 
     var body: some View {
+        if !PurchaseManager.shared.isPro {
+            GatedContentView(context: "Unlock Answering Techniques")
+        } else {
         List {
             Section {
                 ForEach(generalFramework, id: \.title) { item in
@@ -246,6 +249,7 @@ struct AnsweringTechniquesListView: View {
             }
         }
         .navigationTitle("Answering Techniques")
+        }
     }
 }
 

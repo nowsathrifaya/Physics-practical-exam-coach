@@ -22,6 +22,9 @@ struct AceListView: View {
     private var profile: CurriculumProfile { CurriculumProfiles.forCurriculum(curriculum) }
 
     var body: some View {
+        if !PurchaseManager.shared.isPro {
+            GatedContentView(context: "Unlock ACE Practice")
+        } else {
         List {
             Section {
                 NavigationLink {
@@ -67,6 +70,7 @@ struct AceListView: View {
             }
         }
         .navigationTitle("ACE Practice")
+        }
     }
 }
 

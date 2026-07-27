@@ -15,9 +15,28 @@ struct SettingsView: View {
     @State private var soundEffectsEnabled = true
     @State private var examDate: Date?
     @State private var isEditingExamDate = false
+    @State private var purchases = PurchaseManager.shared
+    @State private var showingPaywall = false
 
     var body: some View {
         List {
+            Section("Full Access") {
+                if purchases.isPro {
+                    Label("Full Access unlocked", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(.green)
+                } else {
+                    Button {
+                        showingPaywall = true
+                    } label: {
+                        Label("Unlock Full Access", systemImage: "graduationcap.fill")
+                    }
+                }
+                Button("Restore Purchases") {
+                    Task { await purchases.restore() }
+                }
+                .disabled(purchases.purchaseInProgress)
+            }
+
             Section("Curriculum") {
                 NavigationLink {
                     CurriculumPickerView(homeViewModel: homeViewModel, isOnboarding: false)
@@ -99,6 +118,9 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+        }
         .onAppear {
             soundEffectsEnabled = SoundManager.shared.isEnabled
             examDate = ExamDateStore.get()
