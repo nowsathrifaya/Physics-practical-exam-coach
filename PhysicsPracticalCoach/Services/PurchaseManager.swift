@@ -42,9 +42,12 @@ final class PurchaseManager {
         }
     }
 
-    deinit {
-        updateListenerTask?.cancel()
-    }
+    // Deliberately no deinit here: `PurchaseManager.shared` is a
+    // process-lifetime singleton that's never actually deallocated while
+    // the app runs, and `deinit` runs in a nonisolated context — it can't
+    // touch `updateListenerTask` (a @MainActor-isolated property) under
+    // strict concurrency checking. The detached listener task simply
+    // lives for the app's lifetime, which is the intended behavior here.
 
     // MARK: - Loading
 

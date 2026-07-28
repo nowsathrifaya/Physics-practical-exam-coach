@@ -58,7 +58,7 @@ final class AceViewModel {
     let isMockExam: Bool
     private(set) var mockExamSecondsRemaining: Int
     private(set) var mockExamFinished = false
-    private nonisolated(unsafe) var mockExamTimer: Timer?
+    private nonisolated var mockExamTimer: Timer?
 
     /// Optional cap for a short "Quick Quiz" session (e.g. 5–10 questions).
     /// `nil` means unlimited, matching the existing "Practice all" /
