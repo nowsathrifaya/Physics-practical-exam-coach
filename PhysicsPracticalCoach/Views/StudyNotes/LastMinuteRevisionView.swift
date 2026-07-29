@@ -128,40 +128,129 @@ enum LastMinuteRevisionBank {
 }
 
 struct LastMinuteRevisionView: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                Text("Pick what you need right now \u{2014} each opens on its own.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                NavigationLink {
+                    FormulaRevisionPagerView()
+                } label: {
+                    RevisionCategoryCard(
+                        icon: "function",
+                        tint: .blue,
+                        title: "Formulas",
+                        subtitle: "\(LastMinuteRevisionBank.formulas.count) formula sheets, one per experiment"
+                    )
+                }
+
+                NavigationLink {
+                    HighYieldRevisionPagerView()
+                } label: {
+                    RevisionCategoryCard(
+                        icon: "star.fill",
+                        tint: .orange,
+                        title: "High-Yield Rules",
+                        subtitle: "The mistakes that cost the most marks"
+                    )
+                }
+
+                NavigationLink {
+                    Top20RevisionView()
+                } label: {
+                    RevisionCategoryCard(
+                        icon: "checklist",
+                        tint: .green,
+                        title: "Things to Remember",
+                        subtitle: "Top 20 \u{2014} the last page to check before you walk in"
+                    )
+                }
+            }
+            .padding(20)
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Last Minute Revision")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// One tappable category tile on the Last Minute Revision landing screen.
+private struct RevisionCategoryCard: View {
+    let icon: String
+    let tint: Color
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 22))
+                .foregroundStyle(.white)
+                .frame(width: 48, height: 48)
+                .background(tint.gradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.headline).foregroundStyle(.primary)
+                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+/// Formulas card destination — every formula sheet, one per page.
+private struct FormulaRevisionPagerView: View {
     @Environment(\.dismiss) private var dismiss
-
     private let formulas = LastMinuteRevisionBank.formulas
-    private let noteChunks = LastMinuteRevisionBank.highYieldNotes.chunked(into: 3)
-
-    /// +1 for the final "Top 20 Things to Remember" page.
-    private var totalPages: Int { formulas.count + noteChunks.count + 1 }
 
     var body: some View {
         PagedReaderView(
-            pageCount: totalPages,
-            pageLabel: { i in
-                if i < formulas.count {
-                    return "Formula \(i + 1) of \(formulas.count)"
-                } else if i < formulas.count + noteChunks.count {
-                    let chunkIndex = i - formulas.count
-                    return "High-Yield Rules \(chunkIndex + 1) of \(noteChunks.count)"
-                } else {
-                    return "Top 20 Things to Remember"
-                }
-            },
-            page: { i in
-                if i < formulas.count {
-                    FormulaPage(item: formulas[i])
-                } else if i < formulas.count + noteChunks.count {
-                    HighYieldPage(notes: noteChunks[i - formulas.count])
-                } else {
-                    Top20Page()
-                }
-            },
+            pageCount: formulas.count,
+            pageLabel: { i in "Formula \(i + 1) of \(formulas.count)" },
+            page: { i in FormulaPage(item: formulas[i]) },
             onFinished: { dismiss() },
             finishedLabel: "Done"
         )
-        .navigationTitle("Last Minute Revision")
+        .navigationTitle("Formulas")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// High-Yield Rules card destination — condensed reminders, 3 per page.
+private struct HighYieldRevisionPagerView: View {
+    @Environment(\.dismiss) private var dismiss
+    private let noteChunks = LastMinuteRevisionBank.highYieldNotes.chunked(into: 3)
+
+    var body: some View {
+        PagedReaderView(
+            pageCount: noteChunks.count,
+            pageLabel: { i in "High-Yield Rules \(i + 1) of \(noteChunks.count)" },
+            page: { i in HighYieldPage(notes: noteChunks[i]) },
+            onFinished: { dismiss() },
+            finishedLabel: "Done"
+        )
+        .navigationTitle("High-Yield Rules")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Things to Remember card destination — a single checklist page, so no
+/// pager chrome is shown for just one page.
+private struct Top20RevisionView: View {
+    var body: some View {
+        ScrollView {
+            Top20Page()
+                .padding(20)
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Things to Remember")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

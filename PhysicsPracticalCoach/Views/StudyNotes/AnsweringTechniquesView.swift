@@ -219,36 +219,130 @@ struct AnsweringTechniquesListView: View {
         if !PurchaseManager.shared.isPro {
             GatedContentView(context: "Unlock Answering Techniques")
         } else {
-        List {
-            Section {
-                ForEach(generalFramework, id: \.title) { item in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.title).font(.headline)
-                        Text(item.tip).font(.subheadline).foregroundStyle(.secondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Value-prop header — tells a student what this section is
+                // *for* before showing any content, so they don't open it
+                // expecting a quick tip and land in a wall of text instead.
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("\u{1F3C6} Learn how examiners award marks")
+                        .font(.title3.bold())
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("Read instruments correctly", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                        Label("Avoid common mistakes", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                        Label("Write answers that score marks", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                     }
-                    .padding(.vertical, 5)
+                    .font(.subheadline)
                 }
-            } header: {
-                Text("The 4-step answering framework")
-            }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-            Section {
-                ForEach(Array(techniques.enumerated()), id: \.element.id) { index, technique in
-                    NavigationLink {
-                        AnsweringTechniquesPagerView(techniques: techniques, startIndex: index * 2)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(technique.apparatus.label).font(.headline)
-                            Text(technique.precision).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
-                        }
-                        .padding(.vertical, 5)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("The 4-step answering framework").font(.headline)
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                        FrameworkStepCard(emoji: "\u{1F440}", title: "Read", tip: generalFramework[0].tip, tint: .blue)
+                        FrameworkStepCard(emoji: "\u{1F4CA}", title: "Tabulate", tip: generalFramework[1].tip, tint: .purple)
+                        FrameworkStepCard(emoji: "\u{1F9EE}", title: "Calculate", tip: generalFramework[2].tip, tint: .orange)
+                        FrameworkStepCard(emoji: "\u{2705}", title: "Evaluate", tip: generalFramework[3].tip, tint: .green)
                     }
                 }
-            } header: {
-                Text("By apparatus")
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Choose an apparatus").font(.headline)
+                    VStack(spacing: 10) {
+                        ForEach(Array(techniques.enumerated()), id: \.element.id) { index, technique in
+                            NavigationLink {
+                                AnsweringTechniquesPagerView(techniques: techniques, startIndex: index * 2)
+                            } label: {
+                                ApparatusTechniqueCard(technique: technique)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(20)
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Answering Techniques")
+        }
+    }
+}
+
+/// One of the 4 framework steps, shown as a colorful tappable-looking
+/// tile rather than a plain list row — students recognize a grid of
+/// cards faster than a paragraph they have to read start to finish.
+private struct FrameworkStepCard: View {
+    let emoji: String
+    let title: String
+    let tip: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(emoji).font(.title2)
+            Text(title).font(.subheadline.weight(.bold))
+            Text(tip).font(.caption2).foregroundStyle(.secondary).lineLimit(4)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(minHeight: 120, alignment: .top)
+        .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(tint.opacity(0.3), lineWidth: 1))
+    }
+}
+
+/// One apparatus entry, shown as a card with a mini illustration, a
+/// mistake-count/marks indicator, and a clear "Start" affordance —
+/// instead of a plain settings-style row with just a title and a
+/// truncated sentence of precision text.
+private struct ApparatusTechniqueCard: View {
+    let technique: AnsweringTechnique
+
+    private var maxMarksLost: Int { technique.errors.map(\.marksLost).max() ?? 1 }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            apparatusIcon(for: technique.apparatus)
+                .font(.system(size: 22))
+                .foregroundStyle(.white)
+                .frame(width: 48, height: 48)
+                .background(Color.accentColor.gradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(technique.apparatus.label).font(.headline).foregroundStyle(.primary)
+                HStack(spacing: 4) {
+                    ForEach(0..<4, id: \.self) { i in
+                        Image(systemName: i < maxMarksLost ? "star.fill" : "star")
+                            .font(.caption2)
+                            .foregroundStyle(i < maxMarksLost ? .orange : Color(.tertiaryLabel))
+                    }
+                    Text("\u{00B7} \(technique.errors.count) common mistakes")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 8)
+            VStack(spacing: 2) {
+                Text("Start").font(.caption.weight(.semibold)).foregroundStyle(Color.accentColor)
+                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Color.accentColor)
             }
         }
-        .navigationTitle("Answering Techniques")
+        .padding(14)
+        .frame(maxWidth: .infinity)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func apparatusIcon(for type: ApparatusType) -> Image {
+        switch type {
+        case .vernierCaliper, .micrometer: return Image(systemName: "ruler.fill")
+        case .ammeter, .voltmeter: return Image(systemName: "gauge.with.needle.fill")
+        case .newtonMeter: return Image(systemName: "arrow.down.to.line")
+        case .stopwatch: return Image(systemName: "stopwatch.fill")
+        case .thermometer: return Image(systemName: "thermometer.medium")
+        case .measuringCylinder, .burette: return Image(systemName: "flask.fill")
+        default: return Image(systemName: "wrench.and.screwdriver.fill")
         }
     }
 }
@@ -321,6 +415,16 @@ private struct ReadingTechniquePage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text(technique.apparatus.label).font(.title2.bold())
+
+            // Reuses the same Canvas-drawn apparatus illustrations already
+            // built for the Apparatus Trainer — a real visual of the
+            // instrument and its scale, not just descriptive text, without
+            // needing new image assets.
+            apparatusIllustration(for: technique.apparatus)
+                .frame(height: 130)
+                .frame(maxWidth: .infinity)
+                .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
             Label(technique.precision, systemImage: "ruler")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.blue)
@@ -337,6 +441,35 @@ private struct ReadingTechniquePage: View {
             }
 
             MemoryBox(apparatusName: technique.apparatus.label, precision: technique.precision)
+        }
+    }
+
+    /// Illustrative example reading for each instrument — chosen to be a
+    /// clean, plausible mid-scale value, not tied to any live experiment
+    /// data, purely so the diagram shows a realistic needle/scale position.
+    @ViewBuilder
+    private func apparatusIllustration(for type: ApparatusType) -> some View {
+        switch type {
+        case .vernierCaliper:
+            VernierCaliperCanvasView(mainScaleCm: 2.4, vernierCoincidence: 6, zeroErrorCm: 0)
+        case .micrometer:
+            MicrometerCanvasView(sleeveWholeMm: 5, showHalfMm: true, thimbleHundredths: 30, zeroErrorMm: 0)
+        case .ammeter:
+            DialGaugeCanvasView(unitLabel: "A", maxReading: 3, needleReading: 1.8)
+        case .voltmeter:
+            DialGaugeCanvasView(unitLabel: "V", maxReading: 15, needleReading: 9.5)
+        case .newtonMeter:
+            NewtonMeterCanvasView(maxReading: 10, pointerReading: 6.4)
+        case .stopwatch:
+            StopwatchCanvasView(minutes: 1, seconds: 23, tenths: 4)
+        case .thermometer:
+            ThermometerCanvasView(bulbTempC: 24, scaleMinC: -10, scaleMaxC: 110)
+        case .measuringCylinder:
+            MeasuringCylinderCanvasView(maxVolumeCm3: 100, liquidLevelCm3: 63, minorDivisionCm3: 1)
+        case .burette:
+            BuretteCanvasView(readingCm3: 23.4)
+        default:
+            EmptyView()
         }
     }
 
