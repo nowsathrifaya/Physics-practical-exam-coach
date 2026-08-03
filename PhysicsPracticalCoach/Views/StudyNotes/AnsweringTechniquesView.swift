@@ -72,9 +72,10 @@ enum AnsweringTechniquesBank {
                 "Check zero error with the jaws fully closed on nothing."
             ],
             errors: [
-                ApparatusError(error: "Missing the 0.5 mm sleeve mark", fix: "Always check whether the lower half-mm line is visible before adding the thimble reading — skipping it under-reads by exactly 0.5 mm."),
-                ApparatusError(error: "Over-tightening with the thimble", fix: "Always use the ratchet stop to close the jaws — it slips at a fixed, repeatable force so you don't compress the object being measured."),
-                ApparatusError(error: "Ignoring zero error", fix: "State and apply the closed-jaw zero reading before giving your final answer, exactly as with the vernier caliper.")
+                ApparatusError(error: "Missing the 0.5 mm sleeve mark", fix: "Always check whether the lower half-mm line is visible before adding the thimble reading — skipping it under-reads by exactly 0.5 mm.", marksLost: 3),
+                ApparatusError(error: "Over-tightening with the thimble", fix: "Always use the ratchet stop to close the jaws — it slips at a fixed, repeatable force so you don't compress the object being measured.", marksLost: 2),
+                ApparatusError(error: "Ignoring zero error", fix: "State and apply the closed-jaw zero reading before giving your final answer, exactly as with the vernier caliper.", marksLost: 3),
+                ApparatusError(error: "5.8 mm", fix: "Micrometer readings need 2 d.p. — the hundredths digit (from the thimble scale) is part of the measurement, not a rounding choice.", marksLost: 1, correctAnswer: "5.80 mm")
             ],
             howToAnswer: "Diameter = sleeve reading + thimble reading − zero error = 5.5 + 0.32 − (+0.02) = 5.80 mm. Show sleeve and thimble as two separate numbers before combining them — this is what the mark scheme checks for."
         ),
@@ -121,9 +122,10 @@ enum AnsweringTechniquesBank {
                 "Read at eye level, perpendicular to the scale."
             ],
             errors: [
-                ApparatusError(error: "Not zeroed before use", fix: "State explicitly that you checked/adjusted the zero before taking readings — this is often a dedicated method mark."),
-                ApparatusError(error: "Held horizontally", fix: "Always use the newton-meter hanging vertically; horizontal use introduces friction against the internal spring guide and under-reads the force."),
-                ApparatusError(error: "Reading while swinging", fix: "Steady the mass with your hand first, then release and wait for the pointer to settle before reading.")
+                ApparatusError(error: "Not zeroed before use", fix: "State explicitly that you checked/adjusted the zero before taking readings — this is often a dedicated method mark.", marksLost: 2),
+                ApparatusError(error: "Held horizontally", fix: "Always use the newton-meter hanging vertically; horizontal use introduces friction against the internal spring guide and under-reads the force.", marksLost: 2),
+                ApparatusError(error: "Reading while swinging", fix: "Steady the mass with your hand first, then release and wait for the pointer to settle before reading.", marksLost: 1),
+                ApparatusError(error: "2.4N", fix: "Record to 0.1 N (1 d.p.) with a space before the unit — always show the decimal place your instrument actually supports, not a rounded whole number.", marksLost: 1, correctAnswer: "2.4 N")
             ],
             howToAnswer: "Weight = 2.4 N. If asked for a precaution, write the specific one that applies here: 'ensure the newton-meter hangs vertically and is zeroed before each reading' — generic answers like 'be careful' score zero."
         ),
@@ -137,9 +139,10 @@ enum AnsweringTechniquesBank {
                 "Repeat each timing at least twice and average."
             ],
             errors: [
-                ApparatusError(error: "Not converting mm:ss.t to seconds", fix: "1:23.4 on the display means 83.4 s, not 123.4 s — always convert minutes × 60 + seconds before writing your final value."),
-                ApparatusError(error: "Timing only one oscillation", fix: "Time a larger number of oscillations (commonly 20) and divide, so your reaction-time error is spread across many cycles instead of dominating a single one."),
-                ApparatusError(error: "Different starting/stopping references each trial", fix: "Always start and stop at the same visual reference point (e.g. the pendulum passing the centre) for every repeat.")
+                ApparatusError(error: "Not converting mm:ss.t to seconds", fix: "1:23.4 on the display means 83.4 s, not 123.4 s — always convert minutes × 60 + seconds before writing your final value.", marksLost: 3),
+                ApparatusError(error: "Timing only one oscillation", fix: "Time a larger number of oscillations (commonly 20) and divide, so your reaction-time error is spread across many cycles instead of dominating a single one.", marksLost: 3),
+                ApparatusError(error: "Different starting/stopping references each trial", fix: "Always start and stop at the same visual reference point (e.g. the pendulum passing the centre) for every repeat.", marksLost: 2),
+                ApparatusError(error: "1.2 s", fix: "Don't round the divided period early — keep at least 2 d.p. on a calculated average, since the division itself often carries its own mark.", marksLost: 1, correctAnswer: "1.16 s")
             ],
             howToAnswer: "t₂₀ = 23.2 s → T = 23.2 / 20 = 1.16 s. Show the raw stopwatch time AND the divided period as two separate lines — the division step itself often carries its own mark."
         ),
@@ -153,9 +156,10 @@ enum AnsweringTechniquesBank {
                 "Interpolate between the marked divisions to half a division."
             ],
             errors: [
-                ApparatusError(error: "Parallax error", fix: "Read with your eye level with the liquid meniscus, not looking down or up at the scale."),
-                ApparatusError(error: "Reading before equilibrium", fix: "Wait for the reading to stabilise — a thermometer lags behind the true temperature for several seconds after a change."),
-                ApparatusError(error: "Bulb touching the container", fix: "Suspend the bulb in the middle of the liquid, away from the glass walls and the heat source.")
+                ApparatusError(error: "Parallax error", fix: "Read with your eye level with the liquid meniscus, not looking down or up at the scale.", marksLost: 2),
+                ApparatusError(error: "Reading before equilibrium", fix: "Wait for the reading to stabilise — a thermometer lags behind the true temperature for several seconds after a change.", marksLost: 2),
+                ApparatusError(error: "Bulb touching the container", fix: "Suspend the bulb in the middle of the liquid, away from the glass walls and the heat source.", marksLost: 2),
+                ApparatusError(error: "37 \u{00B0}C", fix: "The trailing zero shows the reading was actually taken to the instrument's precision (0.5\u{00B0}C divisions), not just estimated to the nearest whole degree.", marksLost: 1, correctAnswer: "37.0 \u{00B0}C")
             ],
             howToAnswer: "θ = 37.0 °C. If asked to justify precision, state the smallest division explicitly: 'the thermometer has divisions of 1 °C, so readings are recorded to the nearest 0.5 °C.'"
         ),
@@ -169,9 +173,9 @@ enum AnsweringTechniquesBank {
                 "For an opaque or coloured liquid where the meniscus is hard to see, read at the point where the liquid surface appears flat."
             ],
             errors: [
-                ApparatusError(error: "Reading the top of the meniscus", fix: "Always read from the bottom (lowest point) of the curved surface for water and most aqueous solutions."),
-                ApparatusError(error: "Eye not level with the liquid", fix: "Crouch down to bring your eye level with the meniscus rather than reading from above, which causes parallax."),
-                ApparatusError(error: "Rounding to the nearest whole cm³", fix: "Interpolate to the nearest half-division (0.5 cm³) instead of the nearest full marked line.")
+                ApparatusError(error: "Reading the top of the meniscus", fix: "Always read from the bottom (lowest point) of the curved surface for water and most aqueous solutions.", marksLost: 3),
+                ApparatusError(error: "Eye not level with the liquid", fix: "Crouch down to bring your eye level with the meniscus rather than reading from above, which causes parallax.", marksLost: 2),
+                ApparatusError(error: "14 cm\u{00B3}", fix: "Measuring cylinders read to half the smallest division (0.5 cm\u{00B3}) — rounding to the nearest whole number loses the precision mark.", marksLost: 1, correctAnswer: "14.5 cm\u{00B3}")
             ],
             howToAnswer: "Volume of water displaced = 80.0 − 65.5 = 14.5 cm³. Always show both readings (before and after) and the subtraction, not just the final volume — each is checked separately."
         ),
@@ -185,9 +189,9 @@ enum AnsweringTechniquesBank {
                 "Take an initial and a final reading, then subtract, rather than trying to read a 'volume delivered' directly."
             ],
             errors: [
-                ApparatusError(error: "Treating it like a measuring cylinder", fix: "A reading near the bottom of the liquid column is a LARGE number (close to 50), not small — always check which direction the scale increases."),
-                ApparatusError(error: "Reading to the wrong precision", fix: "Burettes must be read to 0.05 cm³ — reporting to 0.1 or 1 cm³ loses the precision mark even if the reading itself is roughly right."),
-                ApparatusError(error: "Air bubble in the tap", fix: "Run a little liquid through the tap before the first reading to clear any trapped air, which would otherwise add a false volume.")
+                ApparatusError(error: "Treating it like a measuring cylinder", fix: "A reading near the bottom of the liquid column is a LARGE number (close to 50), not small — always check which direction the scale increases.", marksLost: 3),
+                ApparatusError(error: "Air bubble in the tap", fix: "Run a little liquid through the tap before the first reading to clear any trapped air, which would otherwise add a false volume.", marksLost: 2),
+                ApparatusError(error: "28.2 cm\u{00B3}", fix: "Burettes are read to 2 d.p. (0.05 cm\u{00B3} precision) — one decimal place isn't fine enough and loses the precision mark.", marksLost: 1, correctAnswer: "28.20 cm\u{00B3}")
             ],
             howToAnswer: "Volume delivered = final reading − initial reading = 32.40 − 4.20 = 28.20 cm³. Always present it as final minus initial explicitly — writing only the answer without both readings loses the working mark."
         )
