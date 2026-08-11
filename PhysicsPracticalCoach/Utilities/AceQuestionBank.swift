@@ -435,7 +435,51 @@ enum AceQuestionBank {
             questionText: "Design an experiment to investigate how period T of a simple pendulum depends on length L. Include: (a) variables, (b) how T is measured, (c) 6 values of L, (d) table headings, (e) graph and how to find g, (f) one precaution.",
             modelAnswer: "(a) IV: L/cm; DV: T/s; CV: mass of bob, angle (<10\u{00B0}), same location.\n(b) Time 20 oscillations; T = t\u{2082}\u{2080}/20; repeat and average.\n(c) L = 10.0, 20.0, 30.0, 40.0, 50.0, 60.0 cm.\n(d) L/cm | t\u{2082}\u{2080}(1)/s | t\u{2082}\u{2080}(2)/s | t\u{2090}\u{1D65}\u{2091}/s | T/s | T\u{00B2}/s\u{00B2}\n(e) Plot T\u{00B2}/s\u{00B2} vs L/cm \u{2192} straight line through origin confirms T\u{00B2}\u{221D}L; gradient = 4\u{03C0}\u{00B2}/g \u{2192} g = 4\u{03C0}\u{00B2}/gradient.\n(f) Ensured angle < 10\u{00B0} to maintain SHM and avoid affecting period.",
             commonMistakes: "\u{2717} Not specifying 6 exact L values\n\u{2717} Bracket notation in headings instead of solidus\n\u{2717} Plotting T vs L (gives curve, not line)\n\u{2717} Stating g = gradient instead of g = 4\u{03C0}\u{00B2}/gradient\n\u{2717} Precaution without reason",
-            examinerTip: "Planning: variables (1), measurement (1), 6 values (1), table (1), graph+gradient (2), precaution (1). Address each mark point explicitly."
+        ),
+
+        // MARK: - Novel apparatus (SEAB-style unfamiliar-equipment questions —
+        // tests transferable skills, not memorised experiments, matching the
+        // 2025 O-Level Physics Practical paper's approach)
+
+        AceQuestion(
+            id: "novel_elastic_mmo_01", topic: .spring, skillArea: .mmo, difficulty: .standard,
+            marks: 1, curricula: allBoards,
+            questionText: "A student measures the extension of an elastic band using a metre rule clamped vertically. Describe how a set square could be used alongside the rule to reduce parallax error when reading the length.",
+            modelAnswer: "\u{2022} Place the set square's edge against the rule, perpendicular to it, and slide it up until it touches the reference point (e.g. the bottom of the hanger).\n\u{2022} Read the rule at the edge of the set square, ensuring the line of sight is exactly along this edge — this fixes the eye at 90\u00B0 to the scale rather than trusting the eye alone to judge a level sightline.",
+            commonMistakes: "\u{2717} 'Look at the ruler from directly in front' — doesn't explain how the set square specifically helps.\n\u{2717} Describing the set square as measuring the extension itself rather than as a sighting aid.",
+            examinerTip: "A set square (or a second rule held horizontally) converts a judgement about eye position into a fixed mechanical reference — examiners want the mechanism, not just 'to avoid parallax.'"
+        ),
+        AceQuestion(
+            id: "novel_elastic_ace_01", topic: .spring, skillArea: .ace, difficulty: .challenging,
+            marks: 2, curricula: allBoards,
+            questionText: "A student claims an elastic band does NOT extend proportionally to the load once the load exceeds a certain value. Describe how the student's table of load and extension results could be used to test this claim, without plotting a graph.",
+            modelAnswer: "\u{2022} For each reading, calculate extension \u00F7 load (or load \u00F7 extension) as a ratio.\n\u{2022} If the band extends proportionally, this ratio stays constant across all loads.\n\u{2022} Compare the ratios: if they stay constant up to some load and then change (increase or decrease) beyond it, this supports the student's claim and identifies roughly where proportionality breaks down.",
+            commonMistakes: "\u{2717} Saying 'plot a graph and look for a bend' — the question explicitly asks for a non-graphical method.\n\u{2717} Comparing raw extensions between rows instead of a calculated ratio — raw values naturally increase with load regardless of proportionality.",
+            examinerTip: "Whenever a question says 'without drawing a graph,' the examiner wants a calculated ratio or difference compared across rows of the existing table — not a restated graph method in words."
+        ),
+        AceQuestion(
+            id: "novel_float_mmo_01", topic: .generalMeasurement, skillArea: .mmo, difficulty: .standard,
+            marks: 1, curricula: allBoards,
+            questionText: "A weighted test tube floats upright in water and bobs up and down when disturbed. Describe one source of error in timing 10 complete bobs, and how it could be reduced.",
+            modelAnswer: "\u{2022} Source: reaction time starting/stopping the stopwatch introduces a fixed timing error each time.\n\u{2022} Reduction: time a larger number of bobs (e.g. 20 instead of 10) so the fixed reaction-time error is divided across more cycles, reducing its effect on the calculated period as a percentage.",
+            commonMistakes: "\u{2717} 'Use a more accurate stopwatch' — the limiting error is human reaction time, not stopwatch resolution.\n\u{2717} Not identifying which specific moment (top of bob, tube passing the water line, etc.) should be used as the timing reference.",
+            examinerTip: "Any 'bobbing/oscillating/swinging' apparatus you've never seen before uses the same fix as a pendulum: time many repeats, use a fixed visual reference point each time."
+        ),
+        AceQuestion(
+            id: "novel_float_plan_01", topic: .generalPlanning, skillArea: .planning, difficulty: .challenging,
+            marks: 4, curricula: allBoards,
+            questionText: "A student claims the period T of a bobbing test tube is related to its submerged length L by T = k\u221AL, where k is a constant. Plan an experiment to investigate this claim. In your plan: (a) explain briefly how you would vary L and measure T, (b) draw a table, with column headings, showing what you would plot to get a straight line, (c) explain how you would use the graph to find k.",
+            modelAnswer: "(a) Add known masses inside the sealed tube to change how deep it floats, giving different submerged lengths L; measure L directly with a ruled scale on the tube or against a fixed rule; for each L, time 20 bobs and divide by 20 to find T.\n(b) L/cm | \u221A(L/cm) | T\u2081/s | T\u2082/s | T\u2090\u1D65\u2091/s\n(c) Plot T\u2090\u1D65\u2091/s (y-axis) against \u221A(L/cm) (x-axis). If T = k\u221AL, this gives a straight line through the origin; the gradient of the line equals k.",
+            commonMistakes: "\u{2717} Plotting T against L directly (gives a curve, not a straight line, since the relationship is a square-root one).\n\u{2717} Table headings without units, or units inside brackets instead of after a solidus.\n\u{2717} Saying k = T \u00F7 \u221AL from a single reading instead of using the gradient of the full line.",
+            examinerTip: "Whenever a claim has a square root, cube, or other power in it (T = k\u221AL, T\u00B2 \u221D L, etc.), the plotted quantities are whichever pair turns the equation into y = mx — here that's T against \u221AL, not T against L."
+        ),
+        AceQuestion(
+            id: "novel_divider_ace_01", topic: .ohmsLaw, skillArea: .ace, difficulty: .challenging,
+            marks: 2, curricula: allBoards,
+            questionText: "A student plots 1/I against R for a resistor Y in series with four different known resistors, obtaining a straight line with gradient G and y-intercept C. A second student suggests \u03B5 = 1/G (where \u03B5 is the battery's EMF) and R_Y = C \u00D7 \u03B5. Explain how these two equations are derived from the circuit.",
+            modelAnswer: "\u2022 For the series circuit, \u03B5 = I(R + R_Y), so I = \u03B5/(R + R_Y), giving 1/I = R/\u03B5 + R_Y/\u03B5.\n\u2022 Comparing to y = mx + c with y = 1/I and x = R: gradient G = 1/\u03B5, so \u03B5 = 1/G.\n\u2022 The y-intercept C = R_Y/\u03B5, so R_Y = C \u00D7 \u03B5.",
+            commonMistakes: "\u{2717} Assuming R_Y = C directly, without multiplying by \u03B5 — the intercept alone isn't the resistance, it's the resistance divided by the EMF.\n\u{2717} Mixing up which variable is on which axis when rearranging 1/I = R/\u03B5 + R_Y/\u03B5 into y = mx + c form.",
+            examinerTip: "When a question hands you two 'suggested' equations using G and C, always derive them yourself from the raw physics equation first (here, \u03B5 = I(R+R_Y)) — that's the only reliable way to check which one is gradient and which is intercept, rather than guessing."
         )
     ]
 

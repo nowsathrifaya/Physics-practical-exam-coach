@@ -66,22 +66,16 @@ final class PurchaseManager {
     /// and after any purchase/restore, rather than trusting a locally
     /// cached flag, so a refund or family-sharing change is reflected
     /// promptly rather than stale.
-   func refreshEntitlement() async {
-
-    // TEMPORARY - FORCE PAYWALL FOR APP STORE SCREENSHOT
-    isPro = false
-    return
-
-    for await result in Transaction.currentEntitlements {
-        guard case .verified(let transaction) = result else { continue }
-        if transaction.productID == Self.fullAccessProductID {
-            isPro = true
-            return
+    func refreshEntitlement() async {
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result else { continue }
+            if transaction.productID == Self.fullAccessProductID {
+                isPro = true
+                return
+            }
         }
+        isPro = false
     }
-    isPro = false
-}
-   
 
     // MARK: - Purchase
 
